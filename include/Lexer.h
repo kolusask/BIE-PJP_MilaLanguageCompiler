@@ -20,6 +20,7 @@ class Lexer {
 public:
     Lexer(std::istream& stream);
     std::shared_ptr<Token> next_token();
+    const TextPosition& position();
 
 private:
     int read_char();

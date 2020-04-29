@@ -25,6 +25,7 @@ public:
 };
 
 class UnexpectedTokenException : public Exception {
+public:
     UnexpectedTokenException(const TextPosition& pos, const std::string& token) :
         Exception(pos, std::string("Unexpected token: '") + token + '\'') {}
 };

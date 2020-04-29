@@ -6,7 +6,6 @@
 
 #include "../include/Exception.h"
 #include "../include/Syntax.h"
-#include "../include/Token.h"
 
 #include <iostream>
 #include <memory>
@@ -74,3 +73,5 @@ std::shared_ptr<Token> Lexer::next_token() {
         }
     }
 }
+
+const TextPosition& Lexer::position() { return m_Position; }
