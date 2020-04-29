@@ -9,7 +9,9 @@
 
 class Exception {
 public:
-    Exception(const std::string message) : m_Message(message) {}
+    Exception(const TextPosition& pos, std::string message) :
+        m_Message(std::string("Line ") + std::to_string(pos.line) + ", column " + std::to_string(pos.column) + ":\n"
+        + message) {}
     std::string message() const { return m_Message; }
 
 protected:
@@ -19,8 +21,7 @@ protected:
 class InvalidSymbolException : public Exception {
 public:
     InvalidSymbolException(const TextPosition& pos, char inv) :
-        Exception(std::string("Line ") + std::to_string(pos.line) + ", column " + std::to_string(pos.column)
-        + ":\nInvalid symbol: '" + (inv != '\n' ? std::string(1, inv) : std::string("\\n")) + '\'') {}
+        Exception(pos, "Invalid symbol: '" + (inv != '\n' ? std::string(1, inv) : std::string("\\n")) + '\'') {}
 };
 
 #endif //MILALANGUAGECOMPILER_EXCEPTION_H
