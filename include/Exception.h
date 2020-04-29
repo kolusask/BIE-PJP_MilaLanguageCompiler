@@ -20,8 +20,13 @@ protected:
 
 class InvalidSymbolException : public Exception {
 public:
-    InvalidSymbolException(const TextPosition& pos, char inv) :
+    InvalidSymbolException(const TextPosition& pos, const char inv) :
         Exception(pos, "Invalid symbol: '" + (inv != '\n' ? std::string(1, inv) : std::string("\\n")) + '\'') {}
+};
+
+class UnexpectedTokenException : public Exception {
+    UnexpectedTokenException(const TextPosition& pos, const std::string& token) :
+        Exception(pos, std::string("Unexpected token: '") + token + '\'') {}
 };
 
 #endif //MILALANGUAGECOMPILER_EXCEPTION_H
