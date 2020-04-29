@@ -12,6 +12,10 @@
 #include <memory>
 #include <set>
 
+struct TextPosition {
+    size_t line, column;
+};
+
 class Lexer {
 public:
     Lexer(std::istream& stream);
@@ -23,8 +27,7 @@ private:
     std::string read_identifier();
     std::istream& m_Stream;
     int m_Char;
-    size_t m_Line = 1;
-    size_t m_Col = 0;
+    TextPosition m_Position;
 
 };
 

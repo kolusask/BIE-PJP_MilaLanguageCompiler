@@ -18,9 +18,9 @@ protected:
 
 class InvalidSymbolException : public Exception {
 public:
-    InvalidSymbolException(const size_t line, const size_t column, const char invalid) :
-        Exception(std::string("Line ") + std::to_string(line) + ", column " + std::to_string(column)
-        + ":\nInvalid symbol: '" + (invalid != '\n' ? std::string(1, invalid) : std::string("\\n")) + '\'') {}
+    InvalidSymbolException(const TextPosition& pos, char inv) :
+        Exception(std::string("Line ") + std::to_string(pos.line) + ", column " + std::to_string(pos.column)
+        + ":\nInvalid symbol: '" + (inv != '\n' ? std::string(1, inv) : std::string("\\n")) + '\'') {}
 };
 
 #endif //MILALANGUAGECOMPILER_EXCEPTION_H
