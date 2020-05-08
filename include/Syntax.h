@@ -5,7 +5,7 @@
 #ifndef MILALANGUAGECOMPILER_SYNTAX_H
 #define MILALANGUAGECOMPILER_SYNTAX_H
 
-#include "../include/Token.h"
+#include "Token.h"
 
 #include <map>
 #include <set>
@@ -15,7 +15,6 @@ class Syntax {
 public:
     static TokenType check_character(const char op);
     static TokenType check_keyword(const std::string& word);
-    static std::string simple_token(const TokenType type);
     static bool is_delimiter(const char del);
 private:
     static const std::set<char> s_Delimiters;

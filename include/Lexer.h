@@ -5,7 +5,7 @@
 #ifndef MILALANGUAGECOMPILER_LEXER_H
 #define MILALANGUAGECOMPILER_LEXER_H
 
-#include "../include/Token.h"
+#include "Token.h"
 
 #include <istream>
 #include <map>

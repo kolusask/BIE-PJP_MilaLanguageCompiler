@@ -12,12 +12,14 @@ public:
     Parser(std::istream& stream);
     void start_parsing();
 
+
+private:
     // parse specific constructs
     void parse_program_definition();
     void parse_top_level();
     void parse_identifier();
+    void parse_const();
 
-private:
     std::shared_ptr<Token> next_token();
     void parse_rest(const std::shared_ptr<Token> startToken);
     Lexer m_Lexer;

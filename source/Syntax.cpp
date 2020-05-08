@@ -17,20 +17,6 @@ const std::map<char, TokenType> Syntax::s_Characters = {{'=', TOK_ASSIGN},
                                                         {'(', TOK_OPEN_BRACKET},
                                                         {')', TOK_CLOSE_BRACKET}};
 
-const std::map<TokenType, std::string> Syntax::s_SimpleTokens = {{TOK_ASSIGN, "="},
-                                                                 {TOK_BEGIN, "begin"},
-                                                                 {TOK_CLOSE_BRACKET, ")"},
-                                                                 {TOK_CONST, "const"},
-                                                                 {TOK_DOT, "."},
-                                                                 {TOK_END, "end"},
-                                                                 {TOK_OPEN_BRACKET, ")"},
-                                                                 {TOK_PROGRAM, "program"},
-                                                                 {TOK_SEMICOLON, ";"}};
-
-std::string Syntax::simple_token(const TokenType type) {
-    return s_SimpleTokens.at(type);
-}
-
 TokenType Syntax::check_character(const char op) {
     if (s_Characters.count(op))
         return s_Characters.at(op);

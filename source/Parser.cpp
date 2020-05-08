@@ -27,9 +27,15 @@ void Parser::parse_rest(const std::shared_ptr<Token> startToken) {
     while (!quit) {
         auto token = m_Lexer.next_token();
         switch(token->type()) {
-            default: throw UnexpectedTokenException(m_Lexer.position(), Syntax::simple_token(token->type()));
+            default:
+                throw UnexpectedTokenException(m_Lexer.position(), token->to_string());
             case TOK_BEGIN:
                 parse_top_level();
+                break;
+            case TOK_SEMICOLON:
+                continue;
+            case TOK_CONST:
+                parse_const();
                 break;
         }
     }
@@ -40,5 +46,13 @@ void Parser::parse_program_definition() {
 }
 
 void Parser::parse_top_level() {
+
+}
+
+void Parser::parse_identifier() {
+
+}
+
+void Parser::parse_const() {
 
 }
