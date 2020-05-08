@@ -2,10 +2,10 @@
 // Created by askar on 29/04/2020.
 //
 
-#include "Parser.h"
+#include "../include/Parser.h"
 
-#include "include/Exception.h"
-#include "include/Syntax.h"
+#include "../include/Exception.h"
+#include "../include/Syntax.h"
 
 Parser::Parser(std::istream &stream) : m_Lexer(stream), m_ProgramDefined(false) {}
 
@@ -35,4 +35,10 @@ void Parser::parse_rest(const std::shared_ptr<Token> startToken) {
     }
 }
 
+void Parser::parse_program_definition() {
 
+}
+
+void Parser::parse_top_level() {
+
+}

@@ -5,7 +5,7 @@
 #ifndef BIE_PJP_MILALANGUAGECOMPILER_PARSER_H
 #define BIE_PJP_MILALANGUAGECOMPILER_PARSER_H
 
-#include "include/Lexer.h"
+#include "Lexer.h"
 
 class Parser {
 public:
