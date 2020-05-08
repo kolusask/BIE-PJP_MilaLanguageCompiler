@@ -10,7 +10,12 @@
 #include <iostream>
 #include <memory>
 
-Lexer::Lexer(std::istream &stream) : m_Stream(stream), m_Char(stream.get()), m_Position{1, 0} {}
+Lexer::Lexer(std::istream &stream) :
+    m_Stream(stream),
+    m_Char(stream.get()),
+    m_Position{1, 0},
+    m_PrevPosition{1, 0}
+    {}
 
 int Lexer::read_char() {
     m_Char = m_Stream.get();
@@ -47,6 +52,7 @@ std::shared_ptr<Token> as_token(const A arg) {
 std::shared_ptr<Token> Lexer::next_token() {
     while (Syntax::is_delimiter(m_Char))
         read_char();
+    m_PrevPosition = m_Position;
     switch (m_Char) {
         case std::istream::eofbit:
             return as_token<SimpleToken, TokenType>(TOK_EOF);
@@ -74,4 +80,4 @@ std::shared_ptr<Token> Lexer::next_token() {
     }
 }
 
-const TextPosition& Lexer::position() { return m_Position; }
+const TextPosition& Lexer::position() { return m_PrevPosition; }

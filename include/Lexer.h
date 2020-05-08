@@ -29,6 +29,7 @@ private:
     std::istream& m_Stream;
     int m_Char;
     TextPosition m_Position;
+    TextPosition m_PrevPosition;
 
 };
 

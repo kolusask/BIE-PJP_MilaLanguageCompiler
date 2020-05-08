@@ -4,6 +4,7 @@
 
 #include "../include/Token.h"
 
+
 const std::map<TokenType, std::string> SimpleToken::s_TokStrings = {{TOK_ASSIGN, "="},
                                                                     {TOK_BEGIN, "begin"},
                                                                     {TOK_CLOSE_BRACKET, ")"},
