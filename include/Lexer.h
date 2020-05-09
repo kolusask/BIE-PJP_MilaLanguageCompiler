@@ -5,17 +5,22 @@
 #ifndef MILALANGUAGECOMPILER_LEXER_H
 #define MILALANGUAGECOMPILER_LEXER_H
 
-#include "../include/Token.h"
+#include "Token.h"
 
 #include <istream>
 #include <map>
 #include <memory>
 #include <set>
 
+struct TextPosition {
+    size_t line, column;
+};
+
 class Lexer {
 public:
     Lexer(std::istream& stream);
     std::shared_ptr<Token> next_token();
+    const TextPosition& position();
 
 private:
     int read_char();
@@ -23,8 +28,8 @@ private:
     std::string read_identifier();
     std::istream& m_Stream;
     int m_Char;
-    size_t m_Line = 1;
-    size_t m_Col = 0;
+    TextPosition m_Position;
+    TextPosition m_PrevPosition;
 
 };
 

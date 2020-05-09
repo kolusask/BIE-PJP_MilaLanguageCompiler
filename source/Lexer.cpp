@@ -6,22 +6,26 @@
 
 #include "../include/Exception.h"
 #include "../include/Syntax.h"
-#include "../include/Token.h"
 
 #include <iostream>
 #include <memory>
 
-Lexer::Lexer(std::istream &stream) : m_Stream(stream), m_Char(stream.get()) {}
+Lexer::Lexer(std::istream &stream) :
+    m_Stream(stream),
+    m_Char(stream.get()),
+    m_Position{1, 1},
+    m_PrevPosition{1, 1}
+    {}
 
 int Lexer::read_char() {
     m_Char = m_Stream.get();
     if (m_Stream.eof())
         m_Char = std::istream::eofbit;
     else if (m_Char == '\n') {
-        ++m_Line;
-        m_Col = 0;
+        ++m_Position.line;
+        m_Position.column = 0;
     } else
-        ++m_Col;
+        ++m_Position.column;
     return m_Char;
 }
 
@@ -48,6 +52,7 @@ std::shared_ptr<Token> as_token(const A arg) {
 std::shared_ptr<Token> Lexer::next_token() {
     while (Syntax::is_delimiter(m_Char))
         read_char();
+    m_PrevPosition = m_Position;
     switch (m_Char) {
         case std::istream::eofbit:
             return as_token<SimpleToken, TokenType>(TOK_EOF);
@@ -70,7 +75,9 @@ std::shared_ptr<Token> Lexer::next_token() {
                 read_char();
                 return as_token<SimpleToken, TokenType>(type);
             }
-            throw InvalidSymbolException(m_Line, m_Col, m_Char);
+            throw InvalidSymbolException(m_Position, m_Char);
         }
     }
 }
+
+const TextPosition& Lexer::position() { return m_PrevPosition; }
