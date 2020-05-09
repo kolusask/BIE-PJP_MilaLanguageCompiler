@@ -13,8 +13,8 @@
 Lexer::Lexer(std::istream &stream) :
     m_Stream(stream),
     m_Char(stream.get()),
-    m_Position{1, 0},
-    m_PrevPosition{1, 0}
+    m_Position{1, 1},
+    m_PrevPosition{1, 1}
     {}
 
 int Lexer::read_char() {

@@ -42,11 +42,18 @@ void Parser::parse_rest(const std::shared_ptr<Token> startToken) {
 }
 
 void Parser::parse_program_definition() {
-
+    auto programName = next_token();
+    if (programName->type() != TOK_IDENTIFIER)
+        throw Exception(m_Lexer.position(), "Expected an identifier");
+    if (next_token()->type() != TOK_SEMICOLON)
+        throw Exception(m_Lexer.position(), "Expected ';'");
 }
 
 void Parser::parse_top_level() {
-
+    for (auto token = next_token(); token->type() != TOK_EOF; token = next_token())
+        if (token->type() == TOK_END)
+            return;
+    throw Exception(m_Lexer.position(), "Expected 'end'");
 }
 
 void Parser::parse_identifier() {
