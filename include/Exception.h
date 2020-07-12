@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "Lexer.h"
+
 class Exception {
 public:
     Exception(const TextPosition& pos, std::string message) :
