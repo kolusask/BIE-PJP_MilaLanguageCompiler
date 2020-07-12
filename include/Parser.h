@@ -7,23 +7,36 @@
 
 #include "Lexer.h"
 
+#include "Expression.h"
+
+#include <vector>
+
+
 class Parser {
 public:
     Parser(std::istream& stream);
-    void start_parsing();
-
+    void parse();
+    std::string get_source() const;
 
 private:
     // parse specific constructs
-    void parse_program_definition();
-    void parse_top_level();
-    void parse_identifier();
-    void parse_const();
+    std::string parse_program_definition();
+    ExpressionPointer parse_primary();
+    ExpressionPointer parse_top_level();
+    ExpressionPointer parse_identifier();
+    ExpressionPointer parse_integer();
+    std::shared_ptr<ConstExpression> parse_const();
+    std::shared_ptr<BlockExpression> parse_block();
+    ExpressionPointer parse_brackets();
 
+    inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();
-    void parse_rest(const std::shared_ptr<Token> startToken);
+    void parse_rest();
+
+    std::shared_ptr<Token> m_LastToken;
     Lexer m_Lexer;
-    bool m_ProgramDefined;
+    std::string m_ProgramName = "";
+    ExpressionPointer m_Source = nullptr;
 };
 
 

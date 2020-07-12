@@ -5,7 +5,7 @@
 #include "../include/Token.h"
 
 
-const std::map<TokenType, std::string> SimpleToken::s_TokStrings = {{TOK_ASSIGN, "="},
+const std::map<TokenType, std::string> SimpleToken::s_TokStrings = {{TOK_INIT, "="},
                                                                     {TOK_BEGIN, "begin"},
                                                                     {TOK_CLOSE_BRACKET, ")"},
                                                                     {TOK_CONST, "const"},

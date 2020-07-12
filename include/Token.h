@@ -6,11 +6,11 @@
 #define MILALANGUAGECOMPILER_TOKENS_H
 
 #include <map>
+#include <memory>
 #include <string>
 
 enum TokenType {
     TOK_INVALID = 0,
-    TOK_ASSIGN,
     TOK_BEGIN,
     TOK_CLOSE_BRACKET,
     TOK_CONST,
@@ -18,6 +18,7 @@ enum TokenType {
     TOK_END,
     TOK_EOF,
     TOK_IDENTIFIER,
+    TOK_INIT,
     TOK_INTEGER,
     TOK_OPEN_BRACKET,
     TOK_PROGRAM,
@@ -25,10 +26,15 @@ enum TokenType {
 };
 
 // Base class
-class Token {
+class Token : std::enable_shared_from_this<Token> {
 public:
     virtual TokenType type() const = 0;
     virtual std::string to_string() const = 0;
+
+    template<typename T>
+    std::shared_ptr<T> as() {
+        return std::static_pointer_cast<T>(shared_from_this());
+    }
 };
 
 // 'begin', 'const', 'end', 'program', '=', ';', '.', '(', ')'

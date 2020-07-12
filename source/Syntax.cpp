@@ -11,7 +11,7 @@ const std::map<std::string, TokenType> Syntax::s_KeyWords = {{"begin", TOK_BEGIN
                                                              {"end", TOK_END},
                                                              {"program", TOK_PROGRAM}};
 
-const std::map<char, TokenType> Syntax::s_Characters = {{'=', TOK_ASSIGN},
+const std::map<char, TokenType> Syntax::s_Characters = {{'=', TOK_INIT},
                                                         {'.', TOK_DOT},
                                                         {';', TOK_SEMICOLON},
                                                         {'(', TOK_OPEN_BRACKET},
