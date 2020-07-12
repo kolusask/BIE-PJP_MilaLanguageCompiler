@@ -5,6 +5,18 @@
 #ifndef BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 #define BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 
+#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
+
 #include <memory>
 #include <sstream>
 #include <string>
@@ -44,8 +56,8 @@ public:
     std::string to_string() const override {
         std::ostringstream oss(keyword(), std::ios::ate);
         for (const auto& exp : m_Initializations)
-            oss << exp->to_string() << ',' << std::endl;
-        return oss.str().substr(0, oss.str().length() - 2);
+            oss << exp->to_string() << ';' << std::endl;
+        return oss.str();
     }
 
 protected:
