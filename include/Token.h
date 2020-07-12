@@ -42,10 +42,10 @@ class SimpleToken: public Token {
 public:
     SimpleToken(const TokenType type) : m_type(type) {}
     virtual TokenType type() const override { return m_type; }
-    std::string to_string() const override { return s_TokStrings.at(m_type); }
+    std::string to_string() const override { return s_tokStrings.at(m_type); }
 
 private:
-    static const std::map<TokenType, std::string> s_TokStrings;
+    static const std::map<TokenType, std::string> s_tokStrings;
     const TokenType m_type;
 };
 
