@@ -12,12 +12,12 @@
 class Exception {
 public:
     Exception(const TextPosition& pos, std::string message) :
-        m_Message(std::string("Line ") + std::to_string(pos.line) + ", column " + std::to_string(pos.column) + ":\n"
+        m_message(std::string("Line ") + std::to_string(pos.line) + ", column " + std::to_string(pos.column) + ":\n"
         + message) {}
-    std::string message() const { return m_Message; }
+    std::string message() const { return m_message; }
 
 protected:
-    const std::string m_Message;
+    const std::string m_message;
 };
 
 class InvalidSymbolException : public Exception {

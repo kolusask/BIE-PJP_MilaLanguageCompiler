@@ -33,10 +33,10 @@ private:
     std::shared_ptr<Token> next_token();
     void parse_rest();
 
-    std::shared_ptr<Token> m_LastToken;
-    Lexer m_Lexer;
-    std::string m_ProgramName = "";
-    ExpressionPointer m_Source = nullptr;
+    std::shared_ptr<Token> m_lastToken;
+    Lexer m_lexer;
+    std::string m_programName = "";
+    ExpressionPointer m_source = nullptr;
 };
 
 

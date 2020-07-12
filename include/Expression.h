@@ -45,33 +45,33 @@ typedef std::shared_ptr<Expression> ExpressionPointer;
 class InitializationExpression : public Expression {
 public:
     InitializationExpression(const std::string& key, ExpressionPointer& value):
-            m_Key(std::move(key)),
-            m_Value(std::move(value))
+            m_key(std::move(key)),
+            m_value(std::move(value))
     {}
 
     virtual std::string to_string() const override {
-        return m_Key + '=' + m_Value->to_string();
+        return m_key + '=' + m_value->to_string();
     }
 
 private:
-    const std::string m_Key;
-    ExpressionPointer m_Value;
+    const std::string m_key;
+    ExpressionPointer m_value;
 };
 
 class LocalsExpression : public Expression {
 public:
     std::string to_string() const override {
         std::ostringstream oss(keyword(), std::ios::ate);
-        for (const auto& exp : m_Initializations)
+        for (const auto& exp : m_initializations)
             oss << exp->to_string() << ';' << std::endl;
         return oss.str();
     }
 
 protected:
     LocalsExpression(std::vector<std::shared_ptr<InitializationExpression>>& initializations) :
-            m_Initializations(std::move(initializations)) {}
+            m_initializations(std::move(initializations)) {}
     virtual std::string keyword() const = 0;
-    const std::vector<std::shared_ptr<InitializationExpression>> m_Initializations;
+    const std::vector<std::shared_ptr<InitializationExpression>> m_initializations;
 };
 
 class ConstExpression : public LocalsExpression {
@@ -95,81 +95,81 @@ private:
 
 class IntegerExpression : public Expression {
 public:
-    IntegerExpression(const int value) : m_Value(value) {}
-    std::string to_string() const override { return std::to_string(m_Value); }
+    IntegerExpression(const int value) : m_value(value) {}
+    std::string to_string() const override { return std::to_string(m_value); }
     llvm::Value* codegen() const override;
 
 private:
-    const int m_Value;
+    const int m_value;
 };
 
 class IdentifierExpression : public Expression {
 public:
-    IdentifierExpression(std::string name) : m_Value(std::move(name)) {}
-    std::string to_string() const override { return m_Value; }
+    IdentifierExpression(std::string name) : m_value(std::move(name)) {}
+    std::string to_string() const override { return m_value; }
 
 private:
-    const std::string m_Value;
+    const std::string m_value;
 };
 
 class CallExpression : public Expression {
 public:
     CallExpression(std::string& name, std::vector<ExpressionPointer>& arguments) :
-            m_Name(std::move(name)),
-            m_Arguments(std::move(arguments)) {}
+            m_name(std::move(name)),
+            m_arguments(std::move(arguments)) {}
 
     std::string to_string() const override {
-        std::ostringstream oss(m_Name + '(', std::ios::ate);
-        for (const auto& arg : m_Arguments)
+        std::ostringstream oss(m_name + '(', std::ios::ate);
+        for (const auto& arg : m_arguments)
             oss << arg->to_string();
         return oss.str() + ')';
     }
 
 private:
-    const std::string m_Name;
-    const std::vector<ExpressionPointer> m_Arguments;
+    const std::string m_name;
+    const std::vector<ExpressionPointer> m_arguments;
 };
 
 
 class BlockExpression : public Expression {
 public:
-    BlockExpression(std::vector<ExpressionPointer>& body) : m_Body(std::move(body)) {}
+    BlockExpression(std::vector<ExpressionPointer>& body) : m_body(std::move(body)) {}
 
     std::string to_string() const override {
         std::ostringstream oss("begin\n", std::ios::ate);
-        for (const auto& expr : m_Body)
+        for (const auto& expr : m_body)
             oss << expr->to_string() << ";" << std::endl;
         oss << "end";
         return oss.str();
     }
 
 private:
-    const std::vector<ExpressionPointer> m_Body;
+    const std::vector<ExpressionPointer> m_body;
 };
 
 class BodyExpression : public Expression {
 public:
     BodyExpression(const std::shared_ptr<ConstExpression> constExp, const std::shared_ptr<VarExpression> varExp,
                    const std::shared_ptr<BlockExpression> blkExp) :
-            m_Const(constExp),
-            m_Var(varExp),
-            m_Block(blkExp) {}
+            m_const(constExp),
+            m_var(varExp),
+            m_block(blkExp) {}
 
     std::string to_string() const override {
         std::ostringstream oss;
-        if (m_Const)
-            oss << m_Const->to_string() << std::endl;
-        if (m_Var)
-            oss << m_Var->to_string();
-        if (m_Block)
-            oss << m_Block->to_string();
+        if (m_const)
+            oss << m_const->to_string() << std::endl;
+        if (m_var)
+            oss << m_var->to_string();
+        if (m_block)
+            oss << m_block->to_string();
         return oss.str();
     }
 
 private:
-    const std::shared_ptr<ConstExpression> m_Const;
-    const std::shared_ptr<VarExpression> m_Var;
-    const std::shared_ptr<BlockExpression> m_Block;
+    const std::shared_ptr<ConstExpression> m_const;
+    const std::shared_ptr<VarExpression> m_var;
+    const std::shared_ptr<BlockExpression> m_block;
 };
 
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H

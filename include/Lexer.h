@@ -26,10 +26,10 @@ private:
     int read_char();
     int read_number();
     std::string read_identifier();
-    std::istream& m_Stream;
-    int m_Char;
-    TextPosition m_Position;
-    TextPosition m_PrevPosition;
+    std::istream& m_stream;
+    int m_char;
+    TextPosition m_position;
+    TextPosition m_prevPosition;
 
 };
 

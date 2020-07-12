@@ -11,5 +11,5 @@ std::unique_ptr<llvm::Module> Expression::s_module =
 std::map<std::string, llvm::Value *> Expression::s_namedValues;
 
 llvm::Value *IntegerExpression::codegen() const {
-    return llvm::ConstantInt::get(s_context, llvm::APSInt(m_Value));
+    return llvm::ConstantInt::get(s_context, llvm::APSInt(m_value));
 }

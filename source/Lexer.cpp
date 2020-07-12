@@ -11,35 +11,35 @@
 #include <memory>
 
 Lexer::Lexer(std::istream &stream) :
-    m_Stream(stream),
-    m_Char(stream.get()),
-    m_Position{1, 1},
-    m_PrevPosition{1, 1}
+    m_stream(stream),
+    m_char(stream.get()),
+    m_position{1, 1},
+    m_prevPosition{1, 1}
     {}
 
 int Lexer::read_char() {
-    m_Char = m_Stream.get();
-    if (m_Stream.eof())
-        m_Char = std::istream::eofbit;
-    else if (m_Char == '\n') {
-        ++m_Position.line;
-        m_Position.column = 0;
+    m_char = m_stream.get();
+    if (m_stream.eof())
+        m_char = std::istream::eofbit;
+    else if (m_char == '\n') {
+        ++m_position.line;
+        m_position.column = 0;
     } else
-        ++m_Position.column;
-    return m_Char;
+        ++m_position.column;
+    return m_char;
 }
 
 int Lexer::read_number() {
-    int number = m_Char - '0';
+    int number = m_char - '0';
     while (std::isdigit(read_char()))
-        number = number * 10 + (m_Char - '0');
+        number = number * 10 + (m_char - '0');
     return number;
 }
 
 std::string Lexer::read_identifier() {
-    std::string identifier(1, m_Char);
+    std::string identifier(1, m_char);
     while (std::isalpha(read_char()))
-        identifier += m_Char;
+        identifier += m_char;
     return std::move(identifier);
 }
 
@@ -50,10 +50,10 @@ std::shared_ptr<Token> as_token(const A arg) {
 }
 
 std::shared_ptr<Token> Lexer::next_token() {
-    while (Syntax::is_delimiter(m_Char))
+    while (Syntax::is_delimiter(m_char))
         read_char();
-    m_PrevPosition = m_Position;
-    switch (m_Char) {
+    m_prevPosition = m_position;
+    switch (m_char) {
         case std::istream::eofbit:
             return as_token<SimpleToken, TokenType>(TOK_EOF);
         // number
@@ -70,14 +70,14 @@ std::shared_ptr<Token> Lexer::next_token() {
         }
         // single char
         default: {
-            const TokenType type = Syntax::check_character(m_Char);
+            const TokenType type = Syntax::check_character(m_char);
             if (type) {
                 read_char();
                 return as_token<SimpleToken, TokenType>(type);
             }
-            throw InvalidSymbolException(m_Position, m_Char);
+            throw InvalidSymbolException(m_position, m_char);
         }
     }
 }
 
-const TextPosition& Lexer::position() { return m_PrevPosition; }
+const TextPosition& Lexer::position() { return m_prevPosition; }

@@ -40,36 +40,36 @@ public:
 // 'begin', 'const', 'end', 'program', '=', ';', '.', '(', ')'
 class SimpleToken: public Token {
 public:
-    SimpleToken(const TokenType type) : m_Type(type) {}
-    virtual TokenType type() const override { return m_Type; }
-    std::string to_string() const override { return s_TokStrings.at(m_Type); }
+    SimpleToken(const TokenType type) : m_type(type) {}
+    virtual TokenType type() const override { return m_type; }
+    std::string to_string() const override { return s_TokStrings.at(m_type); }
 
 private:
     static const std::map<TokenType, std::string> s_TokStrings;
-    const TokenType m_Type;
+    const TokenType m_type;
 };
 
 class IdentifierToken : public Token {
 public:
-    IdentifierToken(const std::string& name) : m_Name(name) {}
+    IdentifierToken(const std::string& name) : m_name(name) {}
     TokenType type() const override { return TOK_IDENTIFIER; }
-    std::string name() const { return m_Name; }
-    std::string to_string() const override { return m_Name; }
+    std::string name() const { return m_name; }
+    std::string to_string() const override { return m_name; }
 
 private:
-    const std::string m_Name;
+    const std::string m_name;
 };
 
 
 class TokInteger : public Token {
 public:
-    TokInteger(const int value) : m_Value(value) {}
+    TokInteger(const int value) : m_value(value) {}
     TokenType type() const override { return TOK_INTEGER; }
-    int value() const { return m_Value; }
-    std::string to_string() const override { return std::to_string(m_Value); }
+    int value() const { return m_value; }
+    std::string to_string() const override { return std::to_string(m_value); }
 
 private:
-    const int m_Value;
+    const int m_value;
 };
 
 #endif //MILALANGUAGECOMPILER_TOKENS_H
