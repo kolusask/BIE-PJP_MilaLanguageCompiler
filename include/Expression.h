@@ -5,7 +5,7 @@
 #ifndef BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 #define BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 
-#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/APSInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
@@ -30,6 +30,13 @@ public:
     ~Expression() {}
     template<typename T>
     std::shared_ptr<T> as() { return std::static_pointer_cast<T>(shared_from_this()); }
+    virtual llvm::Value* codegen() const { return nullptr; }
+
+protected:
+    static llvm::LLVMContext s_context;
+    static llvm::IRBuilder<> s_builder;
+    static std::unique_ptr<llvm::Module> s_module;
+    static std::map<std::string, llvm::Value *> s_namedValues;
 };
 
 typedef std::shared_ptr<Expression> ExpressionPointer;
@@ -90,6 +97,7 @@ class IntegerExpression : public Expression {
 public:
     IntegerExpression(const int value) : m_Value(value) {}
     std::string to_string() const override { return std::to_string(m_Value); }
+    llvm::Value* codegen() const override;
 
 private:
     const int m_Value;
