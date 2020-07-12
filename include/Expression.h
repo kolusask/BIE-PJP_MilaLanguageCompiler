@@ -49,9 +49,7 @@ public:
             m_value(std::move(value))
     {}
 
-    virtual std::string to_string() const override {
-        return m_key + '=' + m_value->to_string();
-    }
+    virtual std::string to_string() const override;
 
 private:
     const std::string m_key;
@@ -60,12 +58,7 @@ private:
 
 class LocalsExpression : public Expression {
 public:
-    std::string to_string() const override {
-        std::ostringstream oss(keyword(), std::ios::ate);
-        for (const auto& exp : m_initializations)
-            oss << exp->to_string() << ';' << std::endl;
-        return oss.str();
-    }
+    std::string to_string() const override;
 
 protected:
     LocalsExpression(std::vector<std::shared_ptr<InitializationExpression>>& initializations) :
@@ -96,7 +89,7 @@ private:
 class IntegerExpression : public Expression {
 public:
     IntegerExpression(const int value) : m_value(value) {}
-    std::string to_string() const override { return std::to_string(m_value); }
+    std::string to_string() const override;
     llvm::Value* codegen() const override;
 
 private:
@@ -106,7 +99,7 @@ private:
 class IdentifierExpression : public Expression {
 public:
     IdentifierExpression(std::string name) : m_value(std::move(name)) {}
-    std::string to_string() const override { return m_value; }
+    std::string to_string() const override;
 
 private:
     const std::string m_value;
@@ -118,12 +111,7 @@ public:
             m_name(std::move(name)),
             m_arguments(std::move(arguments)) {}
 
-    std::string to_string() const override {
-        std::ostringstream oss(m_name + '(', std::ios::ate);
-        for (const auto& arg : m_arguments)
-            oss << arg->to_string();
-        return oss.str() + ')';
-    }
+    std::string to_string() const override;
 
 private:
     const std::string m_name;
@@ -135,13 +123,7 @@ class BlockExpression : public Expression {
 public:
     BlockExpression(std::vector<ExpressionPointer>& body) : m_body(std::move(body)) {}
 
-    std::string to_string() const override {
-        std::ostringstream oss("begin\n", std::ios::ate);
-        for (const auto& expr : m_body)
-            oss << expr->to_string() << ";" << std::endl;
-        oss << "end";
-        return oss.str();
-    }
+    std::string to_string() const override;
 
 private:
     const std::vector<ExpressionPointer> m_body;
@@ -155,16 +137,7 @@ public:
             m_var(varExp),
             m_block(blkExp) {}
 
-    std::string to_string() const override {
-        std::ostringstream oss;
-        if (m_const)
-            oss << m_const->to_string() << std::endl;
-        if (m_var)
-            oss << m_var->to_string();
-        if (m_block)
-            oss << m_block->to_string();
-        return oss.str();
-    }
+    std::string to_string() const override;
 
 private:
     const std::shared_ptr<ConstExpression> m_const;

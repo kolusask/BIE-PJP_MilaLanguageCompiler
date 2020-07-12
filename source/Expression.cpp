@@ -13,3 +13,49 @@ std::map<std::string, llvm::Value *> Expression::s_namedValues;
 llvm::Value *IntegerExpression::codegen() const {
     return llvm::ConstantInt::get(s_context, llvm::APSInt(m_value));
 }
+
+std::string InitializationExpression::to_string() const {
+    return m_key + '=' + m_value->to_string();
+}
+
+std::string LocalsExpression::to_string() const {
+    std::ostringstream oss(keyword(), std::ios::ate);
+    for (const auto& exp : m_initializations)
+    oss << exp->to_string() << ';' << std::endl;
+    return oss.str();
+}
+
+std::string IntegerExpression::to_string() const {
+    return std::to_string(m_value);
+}
+
+std::string IdentifierExpression::to_string() const {
+    return m_value;
+}
+
+std::string CallExpression::to_string() const {
+    std::ostringstream oss(m_name + '(', std::ios::ate);
+    for (const auto& arg : m_arguments)
+        oss << arg->to_string();
+    return oss.str() + ')';
+}
+
+
+std::string BlockExpression::to_string() const {
+    std::ostringstream oss("begin\n", std::ios::ate);
+    for (const auto& expr : m_body)
+        oss << expr->to_string() << ";" << std::endl;
+    oss << "end";
+    return oss.str();
+}
+
+std::string BodyExpression::to_string() const {
+    std::ostringstream oss;
+    if (m_const)
+        oss << m_const->to_string() << std::endl;
+    if (m_var)
+        oss << m_var->to_string();
+    if (m_block)
+        oss << m_block->to_string();
+    return oss.str();
+}
