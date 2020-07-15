@@ -27,7 +27,7 @@ private:
     ExpressionPointer parse_integer();
     std::shared_ptr<ConstExpression> parse_const();
     std::shared_ptr<BlockExpression> parse_block();
-    ExpressionPointer parse_brackets();
+    ExpressionPointer parse_parentheses();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();

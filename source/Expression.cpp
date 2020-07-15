@@ -10,10 +10,19 @@ std::unique_ptr<llvm::Module> Expression::s_module =
         std::make_unique<llvm::Module>("JIT Module", Expression::s_context);
 std::map<std::string, llvm::Value *> Expression::s_namedValues;
 
-llvm::Value *IntegerExpression::codegen() const {
+/////////////////////////////////////////////////
+//  Code generation
+/////////////////////////////////////////////////
+llvm::Value* IntegerExpression::codegen() const {
     return llvm::ConstantInt::get(s_context, llvm::APSInt(m_value));
 }
 
+
+
+
+/////////////////////////////////////////////////////////
+//  Debug outputs
+/////////////////////////////////////////////////////////
 std::string InitializationExpression::to_string() const {
     return m_key + '=' + m_value->to_string();
 }
@@ -58,4 +67,8 @@ std::string BodyExpression::to_string() const {
     if (m_block)
         oss << m_block->to_string();
     return oss.str();
+}
+
+std::string ParenthesesExpression::to_string() const {
+    return '(' + m_expression->to_string() + ')';
 }

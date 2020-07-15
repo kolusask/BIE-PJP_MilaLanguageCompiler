@@ -145,4 +145,13 @@ private:
     const std::shared_ptr<BlockExpression> m_block;
 };
 
+class ParenthesesExpression : public Expression {
+public:
+    ParenthesesExpression(const ExpressionPointer expr) : m_expression(std::move(expr)) {}
+
+    std::string to_string() const override;
+private:
+    const ExpressionPointer m_expression;
+};
+
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H

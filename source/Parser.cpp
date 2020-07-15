@@ -81,6 +81,8 @@ ExpressionPointer Parser::parse_primary() {
             return std::move(parse_integer());
         case TOK_IDENTIFIER:
             return std::move(parse_identifier());
+        case TOK_OPEN_BRACKET:
+            return std::move(parse_parentheses());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -113,7 +115,15 @@ std::shared_ptr<BlockExpression> Parser::parse_block() {
     while (next_token()->type() != TOK_END) {
         body.push_back(std::move(parse_primary()));
         if (next_token()->type() != TOK_SEMICOLON)
-            throw new Exception(m_lexer.position(), "Expected ';'");
+            throw new ExpectedDifferentException(m_lexer.position(), ";");
     }
     return std::move(std::make_shared<BlockExpression>(body));
+}
+
+ExpressionPointer Parser::parse_parentheses() {
+    next_token();
+    auto expr = parse_primary();
+    if (last_token()->type() != TOK_CLOSE_BRACKET)
+        throw ExpectedDifferentException(m_lexer.position(), ")");
+    return std::move(std::make_shared<ParenthesesExpression>(expr));
 }
