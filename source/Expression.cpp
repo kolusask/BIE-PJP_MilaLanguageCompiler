@@ -44,8 +44,13 @@ std::string IdentifierExpression::to_string() const {
 
 std::string CallExpression::to_string() const {
     std::ostringstream oss(m_name + '(', std::ios::ate);
-    for (const auto& arg : m_arguments)
+    bool first = true;
+    for (const auto& arg : m_arguments) {
+        if (!first)
+            oss << ',';
         oss << arg->to_string();
+        first = false;
+    }
     return oss.str() + ')';
 }
 

@@ -13,6 +13,7 @@ enum TokenType {
     TOK_INVALID = 0,
     TOK_BEGIN,
     TOK_CLOSE_BRACKET,
+    TOK_COMMA,
     TOK_CONST,
     TOK_DOT,
     TOK_END,

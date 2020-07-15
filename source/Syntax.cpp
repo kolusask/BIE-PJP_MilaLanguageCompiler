@@ -9,13 +9,16 @@ const std::set<char> Syntax::s_delimiters = { ' ', '\n', '\t' };
 const std::map<std::string, TokenType> Syntax::s_keyWords = {{"begin", TOK_BEGIN},
                                                              {"const", TOK_CONST},
                                                              {"end", TOK_END},
-                                                             {"program", TOK_PROGRAM}};
+                                                             {"program", TOK_PROGRAM}
+                                                            };
 
 const std::map<char, TokenType> Syntax::s_characters = {{'=', TOK_INIT},
                                                         {'.', TOK_DOT},
                                                         {';', TOK_SEMICOLON},
                                                         {'(', TOK_OPEN_BRACKET},
-                                                        {')', TOK_CLOSE_BRACKET}};
+                                                        {')', TOK_CLOSE_BRACKET},
+                                                        {',', TOK_COMMA}
+                                                        };
 
 TokenType Syntax::check_character(const char op) {
     if (s_characters.count(op))

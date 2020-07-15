@@ -43,6 +43,8 @@ std::shared_ptr<ConstExpression> Parser::parse_const() {
         next_token();
         auto value = parse_primary();
         expressions.push_back(std::make_shared<InitializationExpression>(name, value));
+        if (next_token()->type() != TOK_SEMICOLON)
+            throw ExpectedDifferentException(m_lexer.position(), ";");
     }
     return std::make_shared<ConstExpression>(expressions);
 }
@@ -92,7 +94,7 @@ ExpressionPointer Parser::parse_primary() {
 
 ExpressionPointer Parser::parse_integer() {
     int value = std::static_pointer_cast<TokInteger>(last_token())->value();
-    if (next_token()->type() == TOK_SEMICOLON)
+    //if (next_token()->type() == TOK_SEMICOLON)
         return std::move(std::make_shared<IntegerExpression>(value));
     throw UnexpectedTokenException(m_lexer.position(), last_token()->to_string());
 }
@@ -101,10 +103,12 @@ ExpressionPointer Parser::parse_identifier() {
     std::string name = std::move(last_token())->to_string();
     if (next_token()->type() == TOK_OPEN_BRACKET) {
         std::vector<ExpressionPointer> args;
-        next_token();
-        args.push_back(parse_primary());
-        if (last_token()->type() != TOK_CLOSE_BRACKET)
-            throw new Exception(m_lexer.position(), "Expected ')'");
+        do {
+            next_token();
+            args.push_back(parse_primary());
+        } while (last_token()->type() == TOK_COMMA);
+        if (last_token()->type() != TOK_CLOSE_BRACKET && next_token()->type() != TOK_CLOSE_BRACKET)
+            throw Exception(m_lexer.position(), "Expected ')'");
         return std::move(std::make_shared<CallExpression>(name, args));
     }
     return std::move(std::make_shared<IdentifierExpression>(name));
@@ -115,7 +119,7 @@ std::shared_ptr<BlockExpression> Parser::parse_block() {
     while (next_token()->type() != TOK_END) {
         body.push_back(std::move(parse_primary()));
         if (next_token()->type() != TOK_SEMICOLON)
-            throw new ExpectedDifferentException(m_lexer.position(), ";");
+            throw ExpectedDifferentException(m_lexer.position(), ";");
     }
     return std::move(std::make_shared<BlockExpression>(body));
 }
