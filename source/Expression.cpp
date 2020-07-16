@@ -77,3 +77,7 @@ std::string BodyExpression::to_string() const {
 std::string ParenthesesExpression::to_string() const {
     return '(' + m_expression->to_string() + ')';
 }
+
+std::string BinaryOperationExpression::to_string() const {
+    return '(' + m_left->to_string() + ')' + m_operator->to_string() + '(' + m_right->to_string() + ')';
+}

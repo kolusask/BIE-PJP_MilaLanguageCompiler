@@ -20,8 +20,10 @@ public:
 
 private:
     // parse specific constructs
-    std::string parse_program_definition();
-    ExpressionPointer parse_primary();
+    std::string parse_program_name();
+    ExpressionPointer parse_expression();
+    ExpressionPointer parse_single();
+    ExpressionPointer parse_binary(int exprPrec, ExpressionPointer left);
     ExpressionPointer parse_top_level();
     ExpressionPointer parse_identifier();   // or a function call
     ExpressionPointer parse_integer();

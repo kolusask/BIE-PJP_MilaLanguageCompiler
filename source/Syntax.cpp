@@ -6,7 +6,7 @@
 
 
 TokenType Syntax::check_character(const char ch) {
-    static const std::map<char, TokenType> characters = {{'=', TOK_INIT},
+    static const std::map<char, TokenType> characters = {{'=', TOK_EQUAL},
                                                          {'.', TOK_DOT},
                                                          {';', TOK_SEMICOLON},
                                                          {'(', TOK_OPEN_BRACKET},
@@ -33,5 +33,16 @@ bool Syntax::is_delimiter(const char del) {
     static const std::set<char> delimiters = { ' ',
                                                '\n',
                                                '\t' };
-    return s_delimiters.count(del);
+    return delimiters.count(del);
+}
+
+TokenType Syntax::check_operator(const std::string &op) {
+    static const std::map<std::string, TokenType> operators = {{"+", TOK_PLUS},
+                                                               {"-", TOK_MINUS},
+                                                               {"*", TOK_MULTIPLY},
+                                                               {"=", TOK_EQUAL}};
+    auto it = operators.find(op);
+    if (it != operators.end())
+        return it->second;
+    return TOK_INVALID;
 }

@@ -5,6 +5,8 @@
 #ifndef BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 #define BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 
+#include "Token.h"
+
 #include "llvm/ADT/APSInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
@@ -31,6 +33,7 @@ public:
     template<typename T>
     std::shared_ptr<T> as() { return std::static_pointer_cast<T>(shared_from_this()); }
     virtual llvm::Value* codegen() const { return nullptr; }
+    virtual bool can_be_operand() const = 0;
 
 protected:
     static llvm::LLVMContext s_context;
@@ -50,6 +53,7 @@ public:
     {}
 
     virtual std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
 
 private:
     const std::string m_key;
@@ -59,6 +63,7 @@ private:
 class LocalsExpression : public Expression {
 public:
     std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
 
 protected:
     LocalsExpression(std::vector<std::shared_ptr<InitializationExpression>>& initializations) :
@@ -91,6 +96,7 @@ public:
     IntegerExpression(const int value) : m_value(value) {}
     std::string to_string() const override;
     llvm::Value* codegen() const override;
+    bool can_be_operand() const override { return true; }
 
 private:
     const int m_value;
@@ -100,6 +106,7 @@ class IdentifierExpression : public Expression {
 public:
     IdentifierExpression(std::string name) : m_value(std::move(name)) {}
     std::string to_string() const override;
+    bool can_be_operand() const override { return true; }
 
 private:
     const std::string m_value;
@@ -112,6 +119,7 @@ public:
             m_arguments(std::move(arguments)) {}
 
     std::string to_string() const override;
+    bool can_be_operand() const override { return true; }
 
 private:
     const std::string m_name;
@@ -124,6 +132,7 @@ public:
     BlockExpression(std::vector<ExpressionPointer>& body) : m_body(std::move(body)) {}
 
     std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
 
 private:
     const std::vector<ExpressionPointer> m_body;
@@ -138,6 +147,7 @@ public:
             m_block(blkExp) {}
 
     std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
 
 private:
     const std::shared_ptr<ConstExpression> m_const;
@@ -150,8 +160,26 @@ public:
     ParenthesesExpression(const ExpressionPointer expr) : m_expression(std::move(expr)) {}
 
     std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
+
 private:
     const ExpressionPointer m_expression;
+};
+
+class BinaryOperationExpression : public Expression {
+public:
+    BinaryOperationExpression(const std::shared_ptr<OperatorToken> op, const ExpressionPointer left, const ExpressionPointer right) :
+            m_operator(std::move(op)),
+            m_left(std::move(left)),
+            m_right(std::move(right)) {}
+
+    std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
+
+private:
+    const std::shared_ptr<OperatorToken> m_operator;
+    const ExpressionPointer m_left;
+    const ExpressionPointer m_right;
 };
 
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H

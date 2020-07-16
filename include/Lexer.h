@@ -21,15 +21,21 @@ public:
     Lexer(std::istream& stream);
     std::shared_ptr<Token> next_token();
     const TextPosition& position();
+    void freeze();
 
 private:
+    std::shared_ptr<Token> save_token(std::shared_ptr<Token> tok);
     int read_char();
     int read_number();
     std::string read_identifier();
+    std::string read_operator();
+    bool is_in_operator(const char ch) const;
     std::istream& m_stream;
     int m_char;
     TextPosition m_position;
     TextPosition m_prevPosition;
+    std::shared_ptr<Token> m_lastToken;
+    bool m_frozen;
 
 };
 

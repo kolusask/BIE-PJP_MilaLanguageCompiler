@@ -20,16 +20,16 @@ std::string Parser::get_source() const {
 void Parser::parse() {
     std::string name = "Default";
     if (next_token()->type() == TOK_PROGRAM)
-        name = parse_program_definition();
+        name = parse_program_name();
     m_source = parse_top_level();
 }
 
-std::string Parser::parse_program_definition() {
+std::string Parser::parse_program_name() {
     if (next_token()->type() != TOK_IDENTIFIER)
         throw Exception(m_lexer.position(), "Expected an identifier");
     m_programName = last_token()->to_string();
     if (next_token()->type() != TOK_SEMICOLON)
-        throw Exception(m_lexer.position(), "Expected ';'");
+        throw ExpectedDifferentException(m_lexer.position(), ";");
     next_token();
     return m_programName;
 }
@@ -38,10 +38,10 @@ std::shared_ptr<ConstExpression> Parser::parse_const() {
     std::vector<std::shared_ptr<InitializationExpression>> expressions;
     while (next_token()->type() == TOK_IDENTIFIER) {
         std::string name = last_token()->to_string();
-        if (next_token()->type() != TOK_INIT)
-            throw Exception(m_lexer.position(), "Expected '='");
+        if (next_token()->type() != TOK_EQUAL)
+            throw ExpectedDifferentException(m_lexer.position(), "=");
         next_token();
-        auto value = parse_primary();
+        auto value = parse_expression();
         expressions.push_back(std::make_shared<InitializationExpression>(name, value));
         if (next_token()->type() != TOK_SEMICOLON)
             throw ExpectedDifferentException(m_lexer.position(), ";");
@@ -73,7 +73,74 @@ ExpressionPointer Parser::parse_top_level() {
     return nullptr;
 }
 
-ExpressionPointer Parser::parse_primary() {
+ExpressionPointer Parser::parse_expression() {
+    auto expr = parse_single();
+    if (expr->can_be_operand())
+        return parse_binary(0, expr);
+    return expr;
+}
+
+ExpressionPointer Parser::parse_integer() {
+    int value = std::static_pointer_cast<IntegerToken>(last_token())->value();
+    return std::move(std::make_shared<IntegerExpression>(value));
+}
+
+ExpressionPointer Parser::parse_identifier() {
+    std::string name = std::move(last_token()->to_string());
+    if (next_token()->type() == TOK_OPEN_BRACKET) {
+        std::vector<ExpressionPointer> args;
+        do {
+            next_token();
+            args.push_back(parse_expression());
+        } while (last_token()->type() == TOK_COMMA);
+        if (last_token()->type() != TOK_CLOSE_BRACKET && next_token()->type() != TOK_CLOSE_BRACKET)
+            throw Exception(m_lexer.position(), "Expected ')'");
+        return std::move(std::make_shared<CallExpression>(name, args));
+    }
+    return std::move(std::make_shared<IdentifierExpression>(name));
+}
+
+std::shared_ptr<BlockExpression> Parser::parse_block() {
+    std::vector<ExpressionPointer> body;
+    while (next_token()->type() != TOK_END) {
+        body.push_back(std::move(parse_expression()));
+        if (next_token()->type() != TOK_SEMICOLON)
+            throw ExpectedDifferentException(m_lexer.position(), ";");
+    }
+    return std::move(std::make_shared<BlockExpression>(body));
+}
+
+ExpressionPointer Parser::parse_parentheses() {
+    next_token();
+    auto expr = parse_expression();
+    if (last_token()->type() != TOK_CLOSE_BRACKET)
+        throw ExpectedDifferentException(m_lexer.position(), ")");
+    return std::move(std::make_shared<ParenthesesExpression>(expr));
+}
+
+ExpressionPointer Parser::parse_binary(int exprPrec, ExpressionPointer left) {;
+    // Come here after reading left hand side having operator as last
+    while (true) {
+        int opPrec = last_token()->op_precedence();
+        if (opPrec < exprPrec) {
+            if (last_token()->type() == TOK_SEMICOLON)
+                m_lexer.freeze();
+            return left;
+        }
+
+        auto op = last_token();
+        next_token();
+        auto right = parse_single();
+
+        if (opPrec < next_token()->op_precedence())
+            right = parse_binary(opPrec + 1, std::move(right));
+
+        left = std::make_shared<BinaryOperationExpression>(std::move(std::static_pointer_cast<OperatorToken>(op)),
+                std::move(left), std::move(right));
+    }
+}
+
+ExpressionPointer Parser::parse_single() {
     switch(last_token()->type()) {
         default:
             throw UnexpectedTokenException(m_lexer.position(), last_token()->to_string());
@@ -89,45 +156,5 @@ ExpressionPointer Parser::parse_primary() {
         case TOK_EOF:
             break;
     }
-    return nullptr;
-}
-
-ExpressionPointer Parser::parse_integer() {
-    int value = std::static_pointer_cast<TokInteger>(last_token())->value();
-    //if (next_token()->type() == TOK_SEMICOLON)
-        return std::move(std::make_shared<IntegerExpression>(value));
-    throw UnexpectedTokenException(m_lexer.position(), last_token()->to_string());
-}
-
-ExpressionPointer Parser::parse_identifier() {
-    std::string name = std::move(last_token())->to_string();
-    if (next_token()->type() == TOK_OPEN_BRACKET) {
-        std::vector<ExpressionPointer> args;
-        do {
-            next_token();
-            args.push_back(parse_primary());
-        } while (last_token()->type() == TOK_COMMA);
-        if (last_token()->type() != TOK_CLOSE_BRACKET && next_token()->type() != TOK_CLOSE_BRACKET)
-            throw Exception(m_lexer.position(), "Expected ')'");
-        return std::move(std::make_shared<CallExpression>(name, args));
-    }
-    return std::move(std::make_shared<IdentifierExpression>(name));
-}
-
-std::shared_ptr<BlockExpression> Parser::parse_block() {
-    std::vector<ExpressionPointer> body;
-    while (next_token()->type() != TOK_END) {
-        body.push_back(std::move(parse_primary()));
-        if (next_token()->type() != TOK_SEMICOLON)
-            throw ExpectedDifferentException(m_lexer.position(), ";");
-    }
-    return std::move(std::make_shared<BlockExpression>(body));
-}
-
-ExpressionPointer Parser::parse_parentheses() {
-    next_token();
-    auto expr = parse_primary();
-    if (last_token()->type() != TOK_CLOSE_BRACKET)
-        throw ExpectedDifferentException(m_lexer.position(), ")");
-    return std::move(std::make_shared<ParenthesesExpression>(expr));
+    return ExpressionPointer();
 }
