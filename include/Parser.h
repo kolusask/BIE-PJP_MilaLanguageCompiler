@@ -28,6 +28,7 @@ private:
     ExpressionPointer parse_identifier();   // or a function call
     ExpressionPointer parse_integer();
     std::shared_ptr<ConstExpression> parse_const();
+    std::shared_ptr<VarExpression> parse_var();
     std::shared_ptr<BlockExpression> parse_block();
     ExpressionPointer parse_parentheses();
 

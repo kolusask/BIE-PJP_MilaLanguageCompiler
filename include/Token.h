@@ -14,12 +14,13 @@ enum TokenType {
     TOK_BEGIN,
     TOK_CLOSE_BRACKET,
     TOK_COMMA,
+    TOK_COLON,
     TOK_CONST,
     TOK_DOT,
     TOK_END,
     TOK_EOF,
-    TOK_IDENTIFIER,
     TOK_EQUAL,
+    TOK_IDENTIFIER,
     TOK_INTEGER,
     TOK_LESS,
     TOK_MINUS,
@@ -28,7 +29,8 @@ enum TokenType {
     TOK_OPEN_BRACKET,
     TOK_PLUS,
     TOK_PROGRAM,
-    TOK_SEMICOLON
+    TOK_SEMICOLON,
+    TOK_VAR
 };
 
 // Base class
@@ -103,7 +105,8 @@ public:
     std::string to_string() const override {
         const static std::map<TokenType, const char*> opStrings = {{TOK_PLUS, "+"},
                                                                    {TOK_MINUS, "-"},
-                                                                   {TOK_MULTIPLY, "*"}};
+                                                                   {TOK_MULTIPLY, "*"},
+                                                                   {TOK_EQUAL, "="}};
         return opStrings.at(m_type);
     }
 

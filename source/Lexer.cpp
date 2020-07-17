@@ -15,8 +15,7 @@ Lexer::Lexer(std::istream &stream) :
     m_char(stream.get()),
     m_position{1, 1},
     m_prevPosition{1, 1},
-    m_lastToken(nullptr),
-    m_frozen(false)
+    m_lastToken(nullptr)
     {}
 
 int Lexer::read_char() {
@@ -59,11 +58,6 @@ std::shared_ptr<Token> as_token(const A arg) {
 }
 
 std::shared_ptr<Token> Lexer::next_token() {
-    if (m_frozen) {
-        m_frozen = false;
-        return m_lastToken;
-    }
-
     while (Syntax::is_delimiter(m_char))
         read_char();
     m_prevPosition = m_position;
@@ -120,10 +114,6 @@ bool Lexer::is_in_operator(const char ch) const {
                                           '=',
                                           '>'};
     return op_set.count(ch);
-}
-
-void Lexer::freeze() {
-    m_frozen = true;
 }
 
 std::shared_ptr<Token> Lexer::save_token(std::shared_ptr<Token> tok) {

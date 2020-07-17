@@ -44,50 +44,34 @@ protected:
 
 typedef std::shared_ptr<Expression> ExpressionPointer;
 
-// key = value
-class InitializationExpression : public Expression {
-public:
-    InitializationExpression(const std::string& key, ExpressionPointer& value):
-            m_key(std::move(key)),
-            m_value(std::move(value))
-    {}
-
-    virtual std::string to_string() const override;
-    bool can_be_operand() const override { return false; }
-
-private:
-    const std::string m_key;
-    ExpressionPointer m_value;
-};
-
-class LocalsExpression : public Expression {
+class ConstExpression : public Expression {
 public:
     std::string to_string() const override;
+    void add(const std::string name, const ExpressionPointer value) {
+        m_consts.push_back(std::pair<const std::string, const ExpressionPointer>(std::move(name), std::move(value)));
+    }
+    void add(const std::shared_ptr<ConstExpression> other) {
+        m_consts.insert(m_consts.end(), other->m_consts.begin(), other->m_consts.end());
+    }
     bool can_be_operand() const override { return false; }
 
-protected:
-    LocalsExpression(std::vector<std::shared_ptr<InitializationExpression>>& initializations) :
-            m_initializations(std::move(initializations)) {}
-    virtual std::string keyword() const = 0;
-    const std::vector<std::shared_ptr<InitializationExpression>> m_initializations;
+private:
+    std::vector<std::pair<std::string, ExpressionPointer>> m_consts;
 };
 
-class ConstExpression : public LocalsExpression {
+class VarExpression : public Expression {
 public:
-    ConstExpression(std::vector<std::shared_ptr<InitializationExpression>>& initializations) :
-            LocalsExpression(initializations) {}
+    std::string to_string() const override;
+    void add(const std::string name, const TokenType type) {
+        m_vars.push_back(std::pair<const std::string, const TokenType>(std::move(name), std::move(type)));
+    }
+    void add(const std::shared_ptr<VarExpression> other) {
+        m_vars.insert(m_vars.end(), other->m_vars.begin(), other->m_vars.end());
+    }
+    bool can_be_operand() const override { return false; }
 
 private:
-    std::string keyword() const override { return "const "; }
-};
-
-class VarExpression : public LocalsExpression {
-public:
-    VarExpression(std::vector<std::shared_ptr<InitializationExpression>>& initializations) :
-            LocalsExpression(initializations) {}
-
-private:
-    std::string keyword() const override { return "var "; }
+    std::vector<std::pair<std::string, TokenType>> m_vars;
 };
 
 

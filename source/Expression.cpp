@@ -20,20 +20,9 @@ llvm::Value* IntegerExpression::codegen() const {
 
 
 
-/////////////////////////////////////////////////////////
+//////////////////////////////////////////////////
 //  Debug outputs
-/////////////////////////////////////////////////////////
-std::string InitializationExpression::to_string() const {
-    return m_key + '=' + m_value->to_string();
-}
-
-std::string LocalsExpression::to_string() const {
-    std::ostringstream oss(keyword(), std::ios::ate);
-    for (const auto& exp : m_initializations)
-    oss << exp->to_string() << ';' << std::endl;
-    return oss.str();
-}
-
+//////////////////////////////////////////////////
 std::string IntegerExpression::to_string() const {
     return std::to_string(m_value);
 }
@@ -80,4 +69,18 @@ std::string ParenthesesExpression::to_string() const {
 
 std::string BinaryOperationExpression::to_string() const {
     return '(' + m_left->to_string() + ')' + m_operator->to_string() + '(' + m_right->to_string() + ')';
+}
+
+std::string ConstExpression::to_string() const {
+    std::ostringstream oss("const ", std::ios::ate);
+    for (const auto& c : m_consts)
+        oss << c.first << '=' << c.second->to_string() << ';' << std::endl;
+    return oss.str();
+}
+
+std::string VarExpression::to_string() const {
+    std::ostringstream oss("var ", std::ios::ate);
+    for (const auto& v : m_vars)
+        oss << v.first << " : " << "integer" << ';' << std::endl;
+    return oss.str();
 }

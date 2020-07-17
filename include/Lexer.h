@@ -21,7 +21,6 @@ public:
     Lexer(std::istream& stream);
     std::shared_ptr<Token> next_token();
     const TextPosition& position();
-    void freeze();
 
 private:
     std::shared_ptr<Token> save_token(std::shared_ptr<Token> tok);
@@ -35,7 +34,6 @@ private:
     TextPosition m_position;
     TextPosition m_prevPosition;
     std::shared_ptr<Token> m_lastToken;
-    bool m_frozen;
 
 };
 

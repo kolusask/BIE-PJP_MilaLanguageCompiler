@@ -5,6 +5,7 @@
 #include "../include/Parser.h"
 
 #include "../include/Exception.h"
+#include "../include/Syntax.h"
 
 
 Parser::Parser(std::istream &stream) : m_lexer(stream) {}
@@ -35,7 +36,7 @@ std::string Parser::parse_program_name() {
 }
 
 std::shared_ptr<ConstExpression> Parser::parse_const() {
-    std::vector<std::shared_ptr<InitializationExpression>> expressions;
+    auto expr = std::make_shared<ConstExpression>();
     next_token();
     while (last_token()->type() == TOK_IDENTIFIER) {
         std::string name = last_token()->to_string();
@@ -43,12 +44,39 @@ std::shared_ptr<ConstExpression> Parser::parse_const() {
             throw ExpectedDifferentException(m_lexer.position(), "=");
         next_token();
         auto value = parse_expression();
-        expressions.push_back(std::make_shared<InitializationExpression>(name, value));
+        expr->add(name, value);
         if (last_token()->type() != TOK_SEMICOLON)
             throw ExpectedDifferentException(m_lexer.position(), ";");
         next_token();
     }
-    return std::make_shared<ConstExpression>(expressions);
+    return expr;
+}
+
+std::shared_ptr<VarExpression> Parser::parse_var() {
+    auto expr = std::make_shared<VarExpression>();
+    next_token();
+    std::list<std::string> names;
+    while (last_token()->type() == TOK_IDENTIFIER) {
+        std::string name = last_token()->to_string();
+        switch (next_token()->type()) {
+            case TOK_COMMA:
+                names.push_back(std::move(name));
+                next_token();
+                continue;
+            case TOK_COLON:
+                if (!Syntax::is_datatype(next_token()->type()))
+                    throw UnexpectedTokenException(m_lexer.position(), std::move(last_token()->to_string()));
+                for (const auto& n : names)
+                    expr->add(n, last_token()->type());
+                names.clear();
+                if (next_token()->type() != TOK_SEMICOLON)
+                    throw ExpectedDifferentException(m_lexer.position(), ";");
+                next_token();
+            default:
+                return expr;
+        }
+    }
+    return nullptr;
 }
 
 std::shared_ptr<Token> Parser::last_token() const {
@@ -65,7 +93,16 @@ ExpressionPointer Parser::parse_top_level() {
             case TOK_BEGIN:
                 return std::make_shared<BodyExpression>(constExpr, varExpr, std::move(parse_block()));
             case TOK_CONST:
-                constExpr = parse_const();
+                if (!constExpr)
+                    constExpr = parse_const();
+                else
+                    constExpr->add(parse_const());
+                break;
+            case TOK_VAR:
+                if (!varExpr)
+                    varExpr = parse_var();
+                else
+                    varExpr->add(parse_var());
                 break;
             case TOK_SEMICOLON:
             case TOK_EOF:
@@ -98,7 +135,7 @@ ExpressionPointer Parser::parse_identifier() {
             if (arg)
                 args.push_back(arg);
         } while (last_token()->type() == TOK_COMMA);
-        if (last_token()->type() != TOK_CLOSE_BRACKET && next_token()->type() != TOK_CLOSE_BRACKET)
+        if (last_token()->type() != TOK_CLOSE_BRACKET)
             throw ExpectedDifferentException(m_lexer.position(), ")");
         next_token();
         return std::move(std::make_shared<CallExpression>(name, args));
@@ -171,3 +208,4 @@ ExpressionPointer Parser::parse_single() {
     }
     return ExpressionPointer();
 }
+
