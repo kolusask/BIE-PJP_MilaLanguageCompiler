@@ -160,7 +160,7 @@ public:
     ParenthesesExpression(const ExpressionPointer expr) : m_expression(std::move(expr)) {}
 
     std::string to_string() const override;
-    bool can_be_operand() const override { return false; }
+    bool can_be_operand() const override { return true; }
 
 private:
     const ExpressionPointer m_expression;
