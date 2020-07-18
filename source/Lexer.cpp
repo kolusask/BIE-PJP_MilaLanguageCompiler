@@ -39,7 +39,7 @@ int Lexer::read_number() {
 
 std::string Lexer::read_identifier() {
     std::string identifier(1, m_char);
-    while (std::isalpha(read_char()))
+    while (std::isalpha(read_char()) || std::isdigit(m_char))
         identifier += m_char;
     return std::move(identifier);
 }
