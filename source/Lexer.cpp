@@ -14,7 +14,8 @@ Lexer::Lexer(std::istream &stream) :
     m_stream(stream),
     m_char(stream.get()),
     m_position{1, 1},
-    m_prevPosition{1, 1}
+    m_prevPosition{1, 1},
+    m_lastToken(nullptr)
     {}
 
 int Lexer::read_char() {
@@ -38,9 +39,16 @@ int Lexer::read_number() {
 
 std::string Lexer::read_identifier() {
     std::string identifier(1, m_char);
-    while (std::isalpha(read_char()))
+    while (std::isalpha(read_char()) || std::isdigit(m_char))
         identifier += m_char;
     return std::move(identifier);
+}
+
+std::string Lexer::read_operator() {
+    std::string op(1, m_char);
+    while (is_in_operator(read_char()))
+        op += m_char;
+    return std::move(op);
 }
 
 // Create a specific token as a pointer to Token base
@@ -53,22 +61,43 @@ std::shared_ptr<Token> Lexer::next_token() {
     while (Syntax::is_delimiter(m_char))
         read_char();
     m_prevPosition = m_position;
+
     switch (m_char) {
         case std::istream::eofbit:
             return as_token<SimpleToken, TokenType>(TOK_EOF);
         // number
-        case '0' ... '1':
-            return as_token<TokInteger, int>(read_number());
-        // identifier
+        case '0' ... '9':
+            return as_token<IntegerToken, int>(read_number());
+        // multi character string
         case 'a' ... 'z':
         case 'A' ... 'Z': {
             const std::string &&identifier = read_identifier();
-            const TokenType type = Syntax::check_keyword(identifier);
-            if (!Syntax::check_keyword(identifier))
-                return as_token<IdentifierToken, std::string>(identifier);
-            return as_token<SimpleToken, TokenType>(type);
+            TokenType type;
+            if ((type = Syntax::check_keyword(identifier)))
+                return as_token<SimpleToken, TokenType>(type);
+            if ((type = Syntax::check_operator(identifier)))
+                return as_token<OperatorToken, TokenType>(type);
+            return as_token<IdentifierToken, std::string>(identifier);
+
         }
-        // single char
+        // operator
+        case '<':
+        case '=':
+        case '>':
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case ':': {
+            const std::string &&op = read_operator();
+            TokenType type;
+            if ((type = Syntax::check_operator(op)))
+                return as_token<OperatorToken, TokenType>(type);
+            if (op.length() == 1 && (type = Syntax::check_character(op[0])))
+                return as_token<SimpleToken, TokenType>(type);
+            throw InvalidSymbolException(m_position, m_char);
+        }
+        //single char
         default: {
             const TokenType type = Syntax::check_character(m_char);
             if (type) {
@@ -81,3 +110,15 @@ std::shared_ptr<Token> Lexer::next_token() {
 }
 
 const TextPosition& Lexer::position() { return m_prevPosition; }
+
+bool Lexer::is_in_operator(const char ch) const {
+    static const std::set<char> op_set = {'+',
+                                          '-',
+                                          '*',
+                                          '/',
+                                          '<',
+                                          '=',
+                                          '>',
+                                          ':'};
+    return op_set.count(ch);
+}

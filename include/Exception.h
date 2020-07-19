@@ -32,4 +32,10 @@ public:
         Exception(pos, std::string("Unexpected token: '") + token + '\'') {}
 };
 
+class ExpectedDifferentException : public Exception {
+public:
+    ExpectedDifferentException(const TextPosition& pos, const std::string& token) :
+        Exception(pos, std::string("Expected '") + token + '\'') {}
+};
+
 #endif //MILALANGUAGECOMPILER_EXCEPTION_H
