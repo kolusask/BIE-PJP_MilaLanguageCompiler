@@ -106,3 +106,12 @@ std::string TopLevelExpression::to_string() const {
     oss << m_body->to_string() << '.';
     return oss.str();
 }
+
+std::string ConditionExpression::to_string() const {
+    std::ostringstream oss;
+    oss << "if " << m_condition->to_string() << " then" << std::endl;
+    oss << m_ifTrue->to_string() << std::endl;
+    if (m_ifFalse)
+        oss << "else " << std::endl << m_ifFalse->to_string();
+    return oss.str();
+}

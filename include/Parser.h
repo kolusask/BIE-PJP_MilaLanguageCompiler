@@ -32,6 +32,7 @@ private:
     std::shared_ptr<BlockExpression> parse_block();
     std::shared_ptr<ParenthesesExpression> parse_parentheses();
     std::shared_ptr<FunctionExpression> parse_function();
+    std::shared_ptr<ConditionExpression> parse_condition();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();

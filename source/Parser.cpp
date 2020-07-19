@@ -138,15 +138,17 @@ std::shared_ptr<IntegerExpression> Parser::parse_integer() {
 ExpressionPointer Parser::parse_identifier() {
     std::string name = std::move(last_token()->to_string());
     if (next_token()->type() == TOK_OPEN_BRACKET) {
+        // It is a function call
         std::list<ExpressionPointer> args;
-        do {
-            next_token();
+        next_token();
+        while (last_token()->type() != TOK_CLOSE_BRACKET) {
             auto arg = parse_expression();
-            if (arg)
-                args.push_back(arg);
-        } while (last_token()->type() == TOK_COMMA);
-        if (last_token()->type() != TOK_CLOSE_BRACKET)
-            throw ExpectedDifferentException(m_lexer.position(), ")");
+            if (!arg->can_be_operand())
+                throw Exception(m_lexer.position(), "Not a valid function argument");
+            args.push_back(arg);
+            if (last_token()->type() == TOK_COMMA)
+                next_token();
+        }
         next_token();
         return std::move(std::make_shared<CallExpression>(name, args));
     }
@@ -192,7 +194,7 @@ ExpressionPointer Parser::parse_binary(int exprPrec, ExpressionPointer left) {;
             right = parse_binary(opPrec + 1, std::move(right));
 
         left = std::make_shared<BinaryOperationExpression>(std::move(std::static_pointer_cast<OperatorToken>(op)),
-                std::move(left), std::move(right));
+                std::move(left), std::move(right), Syntax::is_bool_operator(op->type()));
     }
 }
 
@@ -201,15 +203,15 @@ ExpressionPointer Parser::parse_single() {
         default:
             throw UnexpectedTokenException(m_lexer.position(), last_token()->to_string());
         case TOK_BEGIN:
-            return std::move(parse_top_level());
+            return std::move(parse_block());
         case TOK_INTEGER:
             return std::move(parse_integer());
         case TOK_IDENTIFIER:
             return std::move(parse_identifier());
         case TOK_OPEN_BRACKET:
             return std::move(parse_parentheses());
-        case TOK_CLOSE_BRACKET:
-            return nullptr;
+        case TOK_IF:
+            return std::move(parse_condition());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -275,3 +277,21 @@ std::shared_ptr<FunctionExpression> Parser::parse_function() {
     return std::make_shared<FunctionExpression>(name, type, args, consts, vars, body);
 }
 
+std::shared_ptr<ConditionExpression> Parser::parse_condition() {
+    next_token();
+    auto condition = parse_expression();
+    if (!condition->is_boolean())
+        throw Exception(m_lexer.position(), "Condition must be a boolean expression");
+    if (last_token()->type() != TOK_THEN)
+        throw ExpectedDifferentException(m_lexer.position(), "then");
+    next_token();
+    auto ifTrue = parse_expression();
+    ExpressionPointer ifFalse = nullptr;
+    if (last_token()->type() == TOK_ELSE) {
+        next_token();
+        ifFalse = parse_expression();
+    }
+    if (last_token()->type() != TOK_SEMICOLON)
+        throw ExpectedDifferentException(m_lexer.position(), ";");
+    return std::make_shared<ConditionExpression>(condition, ifTrue, ifFalse);
+}

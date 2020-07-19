@@ -36,6 +36,7 @@ public:
     std::shared_ptr<T> as() { return std::static_pointer_cast<T>(shared_from_this()); }
     virtual llvm::Value* codegen() const { return nullptr; }
     virtual bool can_be_operand() const = 0;
+    virtual bool is_boolean() const { return false; }
 
 protected:
     static llvm::LLVMContext s_context;
@@ -153,6 +154,7 @@ public:
 
     std::string to_string() const override;
     bool can_be_operand() const override { return true; }
+    bool is_boolean() const override { return m_expression->is_boolean(); }
 
 private:
     const ExpressionPointer m_expression;
@@ -161,18 +163,22 @@ private:
 class BinaryOperationExpression : public Expression {
 public:
     BinaryOperationExpression(const std::shared_ptr<OperatorToken> op, const ExpressionPointer left,
-                              const ExpressionPointer right) :
+                              const ExpressionPointer right, bool isBoolean) :
             m_operator(std::move(op)),
             m_left(std::move(left)),
-            m_right(std::move(right)) {}
+            m_right(std::move(right)),
+            m_isBoolean(isBoolean) {}
 
     std::string to_string() const override;
-    bool can_be_operand() const override { return false; }
+    bool can_be_operand() const override { return true; }
+    bool is_boolean() const override { return m_isBoolean; }
+
 
 private:
     const std::shared_ptr<OperatorToken> m_operator;
     const ExpressionPointer m_left;
     const ExpressionPointer m_right;
+    const bool m_isBoolean;
 };
 
 class FunctionExpression : public Expression {
@@ -218,6 +224,22 @@ private:
     std::shared_ptr<ConstExpression> m_consts;
     std::shared_ptr<VarExpression> m_vars;
     std::shared_ptr<BlockExpression> m_body;
+};
+
+class ConditionExpression : public Expression {
+public:
+    ConditionExpression(const ExpressionPointer cond, const ExpressionPointer ifTrue, const ExpressionPointer ifFalse) :
+            m_condition(std::move(cond)),
+            m_ifTrue(std::move(ifTrue)),
+            m_ifFalse(std::move(ifFalse)) {}
+
+    std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
+
+private:
+    const ExpressionPointer m_condition;
+    const ExpressionPointer m_ifTrue;
+    const ExpressionPointer m_ifFalse;
 };
 
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
