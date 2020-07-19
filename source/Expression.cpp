@@ -122,3 +122,13 @@ std::string WhileLoopExpression::to_string() const {
     oss << m_body->to_string();
     return oss.str();
 }
+
+
+std::string ForLoopExpression::to_string() const {
+    std::stringstream oss;
+    oss << "for " << m_counter << " := "
+        << m_start->to_string() << (m_down ? " downto " : " to ")
+        << m_finish->to_string() << " do " << std::endl;
+    oss << m_body->to_string();
+    return oss.str();
+}

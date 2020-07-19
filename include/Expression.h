@@ -256,4 +256,25 @@ private:
     const ExpressionPointer m_body;
 };
 
+class ForLoopExpression : public Expression {
+public:
+    ForLoopExpression(const std::string counter, const ExpressionPointer start, const ExpressionPointer finish,
+                      bool down, const ExpressionPointer body) :
+            m_counter(std::move(counter)),
+            m_start(std::move(start)),
+            m_finish(std::move(finish)),
+            m_down(down),
+            m_body(std::move(body)) {}
+
+    std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
+
+public:
+    const std::string m_counter;
+    const ExpressionPointer m_start;
+    const ExpressionPointer m_finish;
+    const bool m_down;
+    const ExpressionPointer m_body;
+};
+
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H

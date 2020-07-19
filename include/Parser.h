@@ -34,6 +34,7 @@ private:
     std::shared_ptr<FunctionExpression> parse_function();
     std::shared_ptr<ConditionExpression> parse_condition();
     std::shared_ptr<WhileLoopExpression> parse_while();
+    std::shared_ptr<ForLoopExpression> parse_for();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();

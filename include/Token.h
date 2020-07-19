@@ -19,10 +19,12 @@ enum TokenType {
     TOK_CONST,
     TOK_DO,
     TOK_DOT,
+    TOK_DOWNTO,
     TOK_END,
     TOK_ELSE,
     TOK_EOF,
     TOK_EQUAL,
+    TOK_FOR,
     TOK_FUNCTION,
     TOK_IDENTIFIER,
     TOK_IF,
@@ -37,6 +39,7 @@ enum TokenType {
     TOK_PROGRAM,
     TOK_SEMICOLON,
     TOK_THEN,
+    TOK_TO,
     TOK_VAR,
     TOK_WHILE
 };

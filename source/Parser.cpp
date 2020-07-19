@@ -218,6 +218,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_condition());
         case TOK_WHILE:
             return std::move(parse_while());
+        case TOK_FOR:
+            return std::move(parse_for());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -314,5 +316,38 @@ std::shared_ptr<WhileLoopExpression> Parser::parse_while() {
     if (last_token()->type() != TOK_SEMICOLON)
         throw ExpectedDifferentException(position(), ";");
     return std::make_shared<WhileLoopExpression>(condition, body);
+}
+
+std::shared_ptr<ForLoopExpression> Parser::parse_for() {
+    if (next_token()->type() != TOK_IDENTIFIER)
+        throw Exception(position(), "Expected a counter variable name");
+    std::string counter = last_token()->to_string();
+    if (next_token()->type() != TOK_ASSIGN)
+        throw ExpectedDifferentException(position(), ":=");
+
+    next_token();
+    auto start = parse_expression();
+    if (!start->can_be_operand())
+        throw Exception(position(), "Invalid starting value");
+
+    bool downto;
+    if (last_token()->type() == TOK_TO)
+        downto = false;
+    else if (last_token()->type() == TOK_DOWNTO)
+        downto = true;
+    else
+        throw Exception(position(), "Expected 'to' or 'downto'");
+
+    next_token();
+    auto finish = parse_expression();
+    if (!finish->can_be_operand())
+        throw Exception(position(), "Invalid final value");
+
+    if (last_token()->type() != TOK_DO)
+        throw ExpectedDifferentException(position(), "do");
+
+    next_token();
+    auto body = parse_expression();
+    return std::make_shared<ForLoopExpression>(counter, start, finish, downto, body);
 }
 
