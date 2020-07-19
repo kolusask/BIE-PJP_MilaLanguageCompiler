@@ -23,7 +23,6 @@ public:
     const TextPosition& position();
 
 private:
-    std::shared_ptr<Token> save_token(std::shared_ptr<Token> tok);
     int read_char();
     int read_number();
     std::string read_identifier();

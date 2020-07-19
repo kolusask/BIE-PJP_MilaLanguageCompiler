@@ -64,20 +64,20 @@ std::shared_ptr<Token> Lexer::next_token() {
 
     switch (m_char) {
         case std::istream::eofbit:
-            return save_token(as_token<SimpleToken, TokenType>(TOK_EOF));
+            return as_token<SimpleToken, TokenType>(TOK_EOF);
         // number
         case '0' ... '9':
-            return save_token(as_token<IntegerToken, int>(read_number()));
+            return as_token<IntegerToken, int>(read_number());
         // multi character string
         case 'a' ... 'z':
         case 'A' ... 'Z': {
             const std::string &&identifier = read_identifier();
             TokenType type;
             if ((type = Syntax::check_keyword(identifier)))
-                return save_token(as_token<SimpleToken, TokenType>(type));
+                return as_token<SimpleToken, TokenType>(type);
             if ((type = Syntax::check_operator(identifier)))
                 return as_token<OperatorToken, TokenType>(type);
-            return save_token(as_token<IdentifierToken, std::string>(identifier));
+            return as_token<IdentifierToken, std::string>(identifier);
 
         }
         // operator
@@ -87,19 +87,22 @@ std::shared_ptr<Token> Lexer::next_token() {
         case '+':
         case '-':
         case '*':
-        case '/': {
+        case '/':
+        case ':': {
             const std::string &&op = read_operator();
-            const TokenType type = Syntax::check_operator(op);
-            if (type)
-                return save_token(as_token<OperatorToken, TokenType>(type));
+            TokenType type;
+            if ((type = Syntax::check_operator(op)))
+                return as_token<OperatorToken, TokenType>(type);
+            if (op.length() == 1 && (type = Syntax::check_character(op[0])))
+                return as_token<SimpleToken, TokenType>(type);
             throw InvalidSymbolException(m_position, m_char);
         }
-        // single char
+        //single char
         default: {
             const TokenType type = Syntax::check_character(m_char);
             if (type) {
                 read_char();
-                return save_token(as_token<SimpleToken, TokenType>(type));
+                return as_token<SimpleToken, TokenType>(type);
             }
             throw InvalidSymbolException(m_position, m_char);
         }
@@ -115,13 +118,7 @@ bool Lexer::is_in_operator(const char ch) const {
                                           '/',
                                           '<',
                                           '=',
-                                          '>'};
+                                          '>',
+                                          ':'};
     return op_set.count(ch);
 }
-
-std::shared_ptr<Token> Lexer::save_token(std::shared_ptr<Token> tok) {
-    m_lastToken = tok;
-    return tok;
-}
-
-

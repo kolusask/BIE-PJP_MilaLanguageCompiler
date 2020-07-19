@@ -13,7 +13,8 @@ const std::list<Syntax::Operator> Syntax::s_operators = {{TOK_PLUS, "+", false},
                                                          {TOK_EQUAL, "=", false},
                                                          {TOK_MOD, "mod", false},
                                                          {TOK_MORE, ">", true},
-                                                         {TOK_LESS, "<", true}};
+                                                         {TOK_LESS, "<", true},
+                                                         {TOK_ASSIGN, ":=", false}};
 
 TokenType Syntax::check_character(const char ch) {
     static const std::map<char, TokenType> characters = {{'=', TOK_EQUAL},

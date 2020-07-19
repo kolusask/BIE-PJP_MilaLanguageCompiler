@@ -11,6 +11,7 @@
 
 enum TokenType {
     TOK_INVALID = 0,
+    TOK_ASSIGN,
     TOK_BEGIN,
     TOK_CLOSE_BRACKET,
     TOK_COMMA,
@@ -109,7 +110,8 @@ public:
                                                           {TOK_EQUAL, 10},
                                                           {TOK_MOD, 40},
                                                           {TOK_MORE, 10},
-                                                          {TOK_LESS, 10}};
+                                                          {TOK_LESS, 10},
+                                                          {TOK_ASSIGN, 50}};
         return prec_map.at(m_type);
     }
     TokenType type() const override { return m_type; }
@@ -120,7 +122,8 @@ public:
                                                                    {TOK_EQUAL, "="},
                                                                    {TOK_MOD, "mod"},
                                                                    {TOK_MORE, ">"},
-                                                                   {TOK_LESS, "<"}};
+                                                                   {TOK_LESS, "<"},
+                                                                   {TOK_ASSIGN, ":="}};
         return opStrings.at(m_type);
     }
 
