@@ -16,6 +16,7 @@ enum TokenType {
     TOK_COMMA,
     TOK_COLON,
     TOK_CONST,
+    TOK_DO,
     TOK_DOT,
     TOK_END,
     TOK_ELSE,
@@ -35,7 +36,8 @@ enum TokenType {
     TOK_PROGRAM,
     TOK_SEMICOLON,
     TOK_THEN,
-    TOK_VAR
+    TOK_VAR,
+    TOK_WHILE
 };
 
 // Base class

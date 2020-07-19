@@ -115,3 +115,10 @@ std::string ConditionExpression::to_string() const {
         oss << "else " << std::endl << m_ifFalse->to_string();
     return oss.str();
 }
+
+std::string WhileLoopExpression::to_string() const {
+    std::stringstream oss;
+    oss << "while " << m_condition->to_string() << " do" << std::endl;
+    oss << m_body->to_string();
+    return oss.str();
+}

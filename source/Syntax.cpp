@@ -39,7 +39,9 @@ TokenType Syntax::check_keyword(const std::string &word) {
                                                               {"function", TOK_FUNCTION},
                                                               {"if", TOK_IF},
                                                               {"then", TOK_THEN},
-                                                              {"else", TOK_ELSE}};
+                                                              {"else", TOK_ELSE},
+                                                              {"while", TOK_WHILE},
+                                                              {"do", TOK_DO}};
     auto it = keyWords.find(word);
     if (it != keyWords.end())
         return it->second;

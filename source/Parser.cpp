@@ -14,6 +14,10 @@ std::shared_ptr<Token> Parser::next_token() {
     return (m_lastToken = m_lexer.next_token());
 }
 
+TextPosition Parser::position() {
+    return m_lexer.position();
+}
+
 std::string Parser::get_source() const {
     return m_source->to_string();
 }
@@ -27,10 +31,10 @@ void Parser::parse() {
 
 std::string Parser::parse_program_name() {
     if (next_token()->type() != TOK_IDENTIFIER)
-        throw Exception(m_lexer.position(), "Expected an identifier");
+        throw Exception(position(), "Expected an identifier");
     m_programName = last_token()->to_string();
     if (next_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(m_lexer.position(), ";");
+        throw ExpectedDifferentException(position(), ";");
     next_token();
     return m_programName;
 }
@@ -41,12 +45,12 @@ std::shared_ptr<ConstExpression> Parser::parse_const() {
     while (last_token()->type() == TOK_IDENTIFIER) {
         std::string name = last_token()->to_string();
         if (next_token()->type() != TOK_EQUAL)
-            throw ExpectedDifferentException(m_lexer.position(), "=");
+            throw ExpectedDifferentException(position(), "=");
         next_token();
         auto value = parse_expression();
         expr->add(name, value);
         if (last_token()->type() != TOK_SEMICOLON)
-            throw ExpectedDifferentException(m_lexer.position(), ";");
+            throw ExpectedDifferentException(position(), ";");
         next_token();
     }
     return expr;
@@ -66,12 +70,12 @@ std::shared_ptr<VarExpression> Parser::parse_var() {
             case TOK_COLON:
                 names.push_back(std::move(name));
                 if (!Syntax::is_datatype(next_token()->type()))
-                    throw UnexpectedTokenException(m_lexer.position(), std::move(last_token()->to_string()));
+                    throw UnexpectedTokenException(position(), std::move(last_token()->to_string()));
                 for (const auto& n : names)
                     expr->add(n, last_token()->type());
                 names.clear();
                 if (next_token()->type() != TOK_SEMICOLON)
-                    throw ExpectedDifferentException(m_lexer.position(), ";");
+                    throw ExpectedDifferentException(position(), ";");
                 next_token();
             default:
                 return expr;
@@ -91,12 +95,12 @@ std::shared_ptr<TopLevelExpression> Parser::parse_top_level() {
     while (last_token()->type() != TOK_EOF) {
         switch (last_token()->type()) {
             default:
-                throw UnexpectedTokenException(m_lexer.position(), last_token()->to_string());
+                throw UnexpectedTokenException(position(), last_token()->to_string());
             case TOK_BEGIN: {
                 auto block = std::make_shared<TopLevelExpression>(functions, constExpr, varExpr,
                                                                   std::move(parse_block()));
                 if (last_token()->type() != TOK_DOT)
-                    throw ExpectedDifferentException(m_lexer.position(), ".");
+                    throw ExpectedDifferentException(position(), ".");
                 return block;
             }
             case TOK_CONST:
@@ -144,7 +148,7 @@ ExpressionPointer Parser::parse_identifier() {
         while (last_token()->type() != TOK_CLOSE_BRACKET) {
             auto arg = parse_expression();
             if (!arg->can_be_operand())
-                throw Exception(m_lexer.position(), "Not a valid function argument");
+                throw Exception(position(), "Not a valid function argument");
             args.push_back(arg);
             if (last_token()->type() == TOK_COMMA)
                 next_token();
@@ -161,7 +165,7 @@ std::shared_ptr<BlockExpression> Parser::parse_block() {
     while (last_token()->type() != TOK_END) {
         body.push_back(std::move(parse_expression()));
         if (last_token()->type() != TOK_SEMICOLON)
-            throw ExpectedDifferentException(m_lexer.position(), ";");
+            throw ExpectedDifferentException(position(), ";");
         next_token();
     }
     next_token();
@@ -172,9 +176,9 @@ std::shared_ptr<ParenthesesExpression> Parser::parse_parentheses() {
     next_token();
     auto expr = parse_expression();
     if (!expr)
-        throw Exception(m_lexer.position(), "Empty parentheses");
+        throw Exception(position(), "Empty parentheses");
     if (last_token()->type() != TOK_CLOSE_BRACKET)
-        throw ExpectedDifferentException(m_lexer.position(), ")");
+        throw ExpectedDifferentException(position(), ")");
     next_token();
     return std::move(std::make_shared<ParenthesesExpression>(expr));
 }
@@ -201,7 +205,7 @@ ExpressionPointer Parser::parse_binary(int exprPrec, ExpressionPointer left) {;
 ExpressionPointer Parser::parse_single() {
     switch(last_token()->type()) {
         default:
-            throw UnexpectedTokenException(m_lexer.position(), last_token()->to_string());
+            throw UnexpectedTokenException(position(), last_token()->to_string());
         case TOK_BEGIN:
             return std::move(parse_block());
         case TOK_INTEGER:
@@ -212,6 +216,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_parentheses());
         case TOK_IF:
             return std::move(parse_condition());
+        case TOK_WHILE:
+            return std::move(parse_while());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -221,34 +227,34 @@ ExpressionPointer Parser::parse_single() {
 
 std::shared_ptr<FunctionExpression> Parser::parse_function() {
     if (next_token()->type() != TOK_IDENTIFIER)
-        throw Exception(m_lexer.position(), "Function name expected");
+        throw Exception(position(), "Function name expected");
     std::string name = last_token()->to_string();
 
     if (next_token()->type() != TOK_OPEN_BRACKET)
-        throw ExpectedDifferentException(m_lexer.position(), "(");
+        throw ExpectedDifferentException(position(), "(");
     std::list<Variable> args;
     while (last_token()->type() != TOK_CLOSE_BRACKET) {
         next_token();
         if (last_token()->type() != TOK_IDENTIFIER)
-            throw Exception(m_lexer.position(), "Expected an argument name or ')'");
+            throw Exception(position(), "Expected an argument name or ')'");
         std::string aname = last_token()->to_string();
         if (next_token()->type() != TOK_COLON)
-            throw ExpectedDifferentException(m_lexer.position(), ":");
+            throw ExpectedDifferentException(position(), ":");
         if (!Syntax::is_datatype(next_token()->type()))
-            throw Exception(m_lexer.position(), last_token()->to_string() + " is not a data type");
+            throw Exception(position(), last_token()->to_string() + " is not a data type");
         TokenType atype = last_token()->type();
         args.push_back(Variable(aname, atype));
         if (next_token()->type() != TOK_COMMA && last_token()->type() != TOK_CLOSE_BRACKET)
-            throw Exception(m_lexer.position(), "Expected ',' or ')");
+            throw Exception(position(), "Expected ',' or ')");
     }
 
     if (next_token()->type() != TOK_COLON)
-        throw ExpectedDifferentException(m_lexer.position(), ":");
+        throw ExpectedDifferentException(position(), ":");
     if (!Syntax::is_datatype(next_token()->type()))
-        throw Exception(m_lexer.position(), last_token()->to_string() + "is not a data type");
+        throw Exception(position(), last_token()->to_string() + "is not a data type");
     TokenType type = last_token()->type();
     if (next_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(m_lexer.position(), ";");
+        throw ExpectedDifferentException(position(), ";");
 
     bool parsingLocals = true;
     auto consts = std::make_shared<ConstExpression>();
@@ -266,13 +272,13 @@ std::shared_ptr<FunctionExpression> Parser::parse_function() {
                 parsingLocals = false;
                 break;
             default:
-                throw UnexpectedTokenException(m_lexer.position(), last_token()->to_string());
+                throw UnexpectedTokenException(position(), last_token()->to_string());
         }
     }
 
     auto body = parse_block();
     if (last_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(m_lexer.position(), ";");
+        throw ExpectedDifferentException(position(), ";");
     next_token();
     return std::make_shared<FunctionExpression>(name, type, args, consts, vars, body);
 }
@@ -281,9 +287,9 @@ std::shared_ptr<ConditionExpression> Parser::parse_condition() {
     next_token();
     auto condition = parse_expression();
     if (!condition->is_boolean())
-        throw Exception(m_lexer.position(), "Condition must be a boolean expression");
+        throw Exception(position(), "Condition must be a boolean expression");
     if (last_token()->type() != TOK_THEN)
-        throw ExpectedDifferentException(m_lexer.position(), "then");
+        throw ExpectedDifferentException(position(), "then");
     next_token();
     auto ifTrue = parse_expression();
     ExpressionPointer ifFalse = nullptr;
@@ -292,6 +298,21 @@ std::shared_ptr<ConditionExpression> Parser::parse_condition() {
         ifFalse = parse_expression();
     }
     if (last_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(m_lexer.position(), ";");
+        throw ExpectedDifferentException(position(), ";");
     return std::make_shared<ConditionExpression>(condition, ifTrue, ifFalse);
 }
+
+std::shared_ptr<WhileLoopExpression> Parser::parse_while() {
+    next_token();
+    auto condition = parse_expression();
+    if (!condition->is_boolean())
+        throw Exception(position(), "Condition must be a boolean expression");
+    if (last_token()->type() != TOK_DO)
+        throw ExpectedDifferentException(position(), "do");
+    next_token();
+    auto body = parse_expression();
+    if (last_token()->type() != TOK_SEMICOLON)
+        throw ExpectedDifferentException(position(), ";");
+    return std::make_shared<WhileLoopExpression>(condition, body);
+}
+

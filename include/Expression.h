@@ -242,4 +242,18 @@ private:
     const ExpressionPointer m_ifFalse;
 };
 
+class WhileLoopExpression : public Expression {
+public:
+    WhileLoopExpression(const ExpressionPointer cond, const ExpressionPointer body) :
+            m_condition(std::move(cond)),
+            m_body(std::move(body)) {}
+
+    std::string to_string() const override;
+    bool can_be_operand() const override { return false; }
+
+private:
+    const ExpressionPointer m_condition;
+    const ExpressionPointer m_body;
+};
+
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H

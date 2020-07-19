@@ -33,9 +33,12 @@ private:
     std::shared_ptr<ParenthesesExpression> parse_parentheses();
     std::shared_ptr<FunctionExpression> parse_function();
     std::shared_ptr<ConditionExpression> parse_condition();
+    std::shared_ptr<WhileLoopExpression> parse_while();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();
+
+    TextPosition position();
 
     std::shared_ptr<Token> m_lastToken;
     Lexer m_lexer;
