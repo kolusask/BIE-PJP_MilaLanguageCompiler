@@ -25,6 +25,7 @@ enum TokenType {
     TOK_INTEGER,
     TOK_LESS,
     TOK_MINUS,
+    TOK_MOD,
     TOK_MORE,
     TOK_MULTIPLY,
     TOK_OPEN_BRACKET,
@@ -99,7 +100,8 @@ public:
     int op_precedence() const override {
         static const std::map<TokenType, int> prec_map = {{TOK_PLUS, 20},
                                                           {TOK_MINUS, 20},
-                                                          {TOK_MULTIPLY, 40}};
+                                                          {TOK_MULTIPLY, 40},
+                                                          {TOK_MOD, 40}};
         return prec_map.at(m_type);
     }
     TokenType type() const override { return m_type; }
@@ -107,7 +109,8 @@ public:
         const static std::map<TokenType, const char*> opStrings = {{TOK_PLUS, "+"},
                                                                    {TOK_MINUS, "-"},
                                                                    {TOK_MULTIPLY, "*"},
-                                                                   {TOK_EQUAL, "="}};
+                                                                   {TOK_EQUAL, "="},
+                                                                   {TOK_MOD, "mod"}};
         return opStrings.at(m_type);
     }
 

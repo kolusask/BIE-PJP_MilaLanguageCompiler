@@ -72,10 +72,13 @@ std::shared_ptr<Token> Lexer::next_token() {
         case 'a' ... 'z':
         case 'A' ... 'Z': {
             const std::string &&identifier = read_identifier();
-            const TokenType type = Syntax::check_keyword(identifier);
-            if (!Syntax::check_keyword(identifier))
-                return save_token(as_token<IdentifierToken, std::string>(identifier));
-            return save_token(as_token<SimpleToken, TokenType>(type));
+            TokenType type;
+            if ((type = Syntax::check_keyword(identifier)))
+                return save_token(as_token<SimpleToken, TokenType>(type));
+            if ((type = Syntax::check_operator(identifier)))
+                return as_token<OperatorToken, TokenType>(type);
+            return save_token(as_token<IdentifierToken, std::string>(identifier));
+
         }
         // operator
         case '<':

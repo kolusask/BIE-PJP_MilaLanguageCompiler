@@ -91,10 +91,9 @@ std::string FunctionExpression::to_string() const {
         oss << m_consts->to_string();
     if (m_vars)
         oss << m_vars->to_string();
-    oss << m_body->to_string();
+    oss << m_body->to_string() << ';' << std::endl;
     return oss.str();
 }
-
 
 std::string TopLevelExpression::to_string() const {
     std::ostringstream oss;

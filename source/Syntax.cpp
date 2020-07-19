@@ -44,7 +44,8 @@ TokenType Syntax::check_operator(const std::string &op) {
     static const std::map<std::string, TokenType> operators = {{"+", TOK_PLUS},
                                                                {"-", TOK_MINUS},
                                                                {"*", TOK_MULTIPLY},
-                                                               {"=", TOK_EQUAL}};
+                                                               {"=", TOK_EQUAL},
+                                                               {"mod", TOK_MOD}};
     auto it = operators.find(op);
     if (it != operators.end())
         return it->second;
