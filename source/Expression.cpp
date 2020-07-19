@@ -52,17 +52,6 @@ std::string BlockExpression::to_string() const {
     return oss.str();
 }
 
-std::string BodyExpression::to_string() const {
-    std::ostringstream oss;
-    if (m_const)
-        oss << m_const->to_string() << std::endl;
-    if (m_var)
-        oss << m_var->to_string();
-    if (m_block)
-        oss << m_block->to_string();
-    return oss.str();
-}
-
 std::string ParenthesesExpression::to_string() const {
     return '(' + m_expression->to_string() + ')';
 }
@@ -72,15 +61,49 @@ std::string BinaryOperationExpression::to_string() const {
 }
 
 std::string ConstExpression::to_string() const {
-    std::ostringstream oss("const ", std::ios::ate);
+    std::ostringstream oss;
     for (const auto& c : m_consts)
-        oss << c.first << '=' << c.second->to_string() << ';' << std::endl;
+        oss << "const " << c.first << '=' << c.second->to_string() << ';' << std::endl;
     return oss.str();
 }
 
 std::string VarExpression::to_string() const {
-    std::ostringstream oss("var ", std::ios::ate);
+    std::ostringstream oss;
     for (const auto& v : m_vars)
-        oss << v.first << " : " << "integer" << ';' << std::endl;
+        oss << "var " << v.first << " : " << "integer" << ';' << std::endl;
+    return oss.str();
+}
+
+std::string FunctionExpression::to_string() const {
+    std::ostringstream oss("function ", std::ios::ate);
+    oss << m_name << '(';
+    bool first = true;
+    for (const Variable& arg : m_arguments) {
+        if (first)
+            first = false;
+        else
+            oss << "; ";
+        oss << arg.first << ": " << arg.second;
+    }
+    static const std::map<TokenType, std::string> dataTypeMap = {{TOK_INTEGER, "integer"}};
+    oss << "): " << dataTypeMap.at(m_type) << ';' << std::endl;
+    if (m_consts)
+        oss << m_consts->to_string();
+    if (m_vars)
+        oss << m_vars->to_string();
+    oss << m_body->to_string();
+    return oss.str();
+}
+
+
+std::string TopLevelExpression::to_string() const {
+    std::ostringstream oss;
+    if (m_consts)
+        oss << m_consts->to_string();
+    if (m_vars)
+        oss << m_vars->to_string();
+    for (const auto& fun : m_functions)
+        oss << fun->to_string();
+    oss << m_body->to_string() << '.';
     return oss.str();
 }

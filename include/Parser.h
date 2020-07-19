@@ -9,7 +9,7 @@
 
 #include "Expression.h"
 
-#include <vector>
+#include <list>
 
 
 class Parser {
@@ -19,18 +19,19 @@ public:
     std::string get_source() const;
 
 private:
-    // parse specific constructs
     std::string parse_program_name();
     ExpressionPointer parse_expression();
     ExpressionPointer parse_single();
+    // parse specific constructs
     ExpressionPointer parse_binary(int exprPrec, ExpressionPointer left);
-    ExpressionPointer parse_top_level();
     ExpressionPointer parse_identifier();   // or a function call
-    ExpressionPointer parse_integer();
+    std::shared_ptr<IntegerExpression> parse_integer();
+    std::shared_ptr<TopLevelExpression> parse_top_level();
     std::shared_ptr<ConstExpression> parse_const();
     std::shared_ptr<VarExpression> parse_var();
     std::shared_ptr<BlockExpression> parse_block();
-    ExpressionPointer parse_parentheses();
+    std::shared_ptr<ParenthesesExpression> parse_parentheses();
+    std::shared_ptr<FunctionExpression> parse_function();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();

@@ -25,7 +25,8 @@ TokenType Syntax::check_keyword(const std::string &word) {
                                                               {"end", TOK_END},
                                                               {"program", TOK_PROGRAM},
                                                               {"var", TOK_VAR},
-                                                              {"integer", TOK_INTEGER}};
+                                                              {"integer", TOK_INTEGER},
+                                                              {"function", TOK_FUNCTION}};
     auto it = keyWords.find(word);
     if (it != keyWords.end())
         return it->second;

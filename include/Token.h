@@ -20,6 +20,7 @@ enum TokenType {
     TOK_END,
     TOK_EOF,
     TOK_EQUAL,
+    TOK_FUNCTION,
     TOK_IDENTIFIER,
     TOK_INTEGER,
     TOK_LESS,
