@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <list>
+#include <vector>
 
 
 enum ExpressionType {
@@ -241,6 +242,16 @@ public:
     bool can_be_operand() const override { return false; }
     ExpressionType type() const override { return EXPR_FUNCTION; }
     std::string name() const { return m_name; }
+
+    std::vector<TokenType> types() const {
+        std::vector<TokenType> result;
+        for (auto& arg : m_arguments)
+            result.push_back(arg.second);
+        return result;
+    }
+
+    TokenType return_type() const { return m_type; }
+    std::shared_ptr<BlockExpression> body() const { return m_body; }
     //size_t number_of_args() const { return m_arguments.size(); }
 
     std::string to_string() const override;

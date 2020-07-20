@@ -13,6 +13,10 @@ llvm::Value *CodeGenerator::generate(const ExpressionPointer expr) {
             return gen_identifier(std::move(expr));
         case EXPR_BINARY_OPERATION:
             return gen_binary_operation(std::move(expr));
+        case EXPR_CALL:
+            return gen_call(std::move(expr));
+        case EXPR_FUNCTION:
+            return gen_function(std::move(expr));
         default:
             return nullptr;
     }
@@ -25,7 +29,7 @@ llvm::Value *CodeGenerator::gen_integer(const ExpressionPointer ep) {
 
 llvm::Value *CodeGenerator::gen_identifier(const ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<IdentifierExpression>(ep);
-    auto value = m_namedValues[expr->value()];
+    auto value = m_variables[expr->value()];
     if (!value)
         throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
     return value;
@@ -72,3 +76,34 @@ llvm::Value *CodeGenerator::gen_call(ExpressionPointer ep) {
 
     return m_builder.CreateCall(function, args, "calltmp");
 }
+
+llvm::Type *CodeGenerator::get_type(TokenType type) {
+    switch (type) {
+        case TOK_INTEGER:
+            return llvm::Type::getDoubleTy(m_context);
+        default:
+            return nullptr;
+    }
+}
+
+llvm::Value *CodeGenerator::gen_function(ExpressionPointer ep) {
+    auto expr = std::static_pointer_cast<FunctionExpression>(ep);
+    std::vector<llvm::Type*> types;
+    for (auto tt : expr->types())
+        types.push_back(get_type(tt));
+    auto retType = llvm::FunctionType::get(get_type(expr->return_type()), types, false);
+    auto function = llvm::Function::Create(
+            retType, llvm::Function::ExternalLinkage, expr->name(), m_module.get());
+
+    auto block = llvm::BasicBlock::Create(m_context, "entry", function);
+    m_builder.SetInsertPoint(block);
+    for (auto& arg : function->args())
+        m_variables[arg.getName()] = &arg;
+
+    auto retVal = generate(expr->body());
+    m_builder.CreateRet(retVal);
+    llvm::verifyFunction(*function);
+
+    return function;
+}
+

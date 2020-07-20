@@ -21,6 +21,7 @@
 
 
 class CodeGenerator {
+public:
     llvm::Value* generate(const ExpressionPointer expr);
 
 private:
@@ -28,11 +29,14 @@ private:
     llvm::Value* gen_identifier(const ExpressionPointer ep);
     llvm::Value* gen_binary_operation(const ExpressionPointer ep);
     llvm::Value* gen_call(const ExpressionPointer ep);
+    llvm::Value* gen_function(const ExpressionPointer ep);
+
+    llvm::Type* get_type(TokenType type);
 
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_builder;
     std::unique_ptr<llvm::Module> m_module;
-    std::map<std::string, llvm::Value *> m_namedValues;
+    std::map<std::string, llvm::Value *> m_variables;
 };
 
 
