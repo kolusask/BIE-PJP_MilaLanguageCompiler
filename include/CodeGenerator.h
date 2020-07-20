@@ -24,7 +24,8 @@ class CodeGenerator {
     llvm::Value* generate(const ExpressionPointer expr);
 
 private:
-    llvm::Value* gen_integer(const ExpressionPointer expr);
+    llvm::Value* gen_integer(const ExpressionPointer ep);
+    llvm::Value* gen_identifier(const ExpressionPointer ep);
 
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_builder;

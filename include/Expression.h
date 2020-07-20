@@ -124,6 +124,8 @@ public:
 
     ExpressionType type() const override { return EXPR_IDENTIFIER; }
 
+    std::string value() const { return m_value; }
+
 private:
     const std::string m_value;
 };
