@@ -46,8 +46,13 @@ std::string Lexer::read_identifier() {
 
 std::string Lexer::read_operator() {
     std::string op(1, m_char);
-    while (is_in_operator(read_char()))
+    while (is_in_operator(read_char())) {
         op += m_char;
+        if (m_char == '=') {
+            read_char();
+            break;
+        }
+    }
     return std::move(op);
 }
 
