@@ -42,6 +42,8 @@ llvm::Value *CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
             return m_builder.CreateFSub(left, right, "subtmp");
         case TOK_MULTIPLY:
             return m_builder.CreateFMul(left, right, "multmp");
+        case TOK_LESS:
+            return m_builder.CreateFCmpULT(left, right, "cmptmp");
         default: return nullptr;
     }
 
