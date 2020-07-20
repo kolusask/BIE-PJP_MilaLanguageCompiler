@@ -199,10 +199,11 @@ public:
     std::string to_string() const override;
 
     bool can_be_operand() const override { return true; }
-
     bool is_boolean() const override { return m_isBoolean; }
-
     ExpressionType type() const override { return EXPR_BINARY_OPERATION; }
+    std::shared_ptr<OperatorToken> op() const { return m_operator; }
+    ExpressionPointer left() const { return m_left; }
+    ExpressionPointer right() const { return m_right; }
 
 private:
     const std::shared_ptr<OperatorToken> m_operator;
