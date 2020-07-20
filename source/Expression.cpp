@@ -4,25 +4,8 @@
 
 #include "../include/Expression.h"
 
-llvm::LLVMContext Expression::s_context;
-llvm::IRBuilder<> Expression::s_builder(Expression::s_context);
-std::unique_ptr<llvm::Module> Expression::s_module =
-        std::make_unique<llvm::Module>("JIT Module", Expression::s_context);
-std::map<std::string, llvm::Value *> Expression::s_namedValues;
+#include "../include/Exception.h"
 
-/////////////////////////////////////////////////
-//  Code generation
-/////////////////////////////////////////////////
-llvm::Value* IntegerExpression::codegen() const {
-    return llvm::ConstantInt::get(s_context, llvm::APSInt(m_value));
-}
-
-
-
-
-//////////////////////////////////////////////////
-//  Debug outputs
-//////////////////////////////////////////////////
 std::string IntegerExpression::to_string() const {
     return std::to_string(m_value);
 }
@@ -30,6 +13,7 @@ std::string IntegerExpression::to_string() const {
 std::string IdentifierExpression::to_string() const {
     return m_value;
 }
+
 
 std::string CallExpression::to_string() const {
     std::ostringstream oss(m_name + '(', std::ios::ate);

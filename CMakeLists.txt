@@ -20,7 +20,7 @@ add_executable(BIE_PJP_MilaLanguageCompiler
         source/Syntax.cpp
         source/Token.cpp
         source/Expression.cpp
-        include/Expression.h)
+        include/Expression.h source/CodeGenerator.cpp include/CodeGenerator.h)
 
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 
