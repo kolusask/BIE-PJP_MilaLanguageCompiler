@@ -11,12 +11,15 @@
 
 class Exception {
 public:
-    Exception(const TextPosition& pos, std::string message) :
-        m_message(std::string("Line ") + std::to_string(pos.line) + ", column " + std::to_string(pos.column) + ":\n"
-        + message) {}
+    Exception(const TextPosition& pos, std::string mess) :
+        m_position(std::move(pos)),
+        m_message(std::move(mess)) {}
+
+    TextPosition position() const { return std::move(m_position); }
     std::string message() const { return m_message; }
 
 protected:
+    const TextPosition m_position;
     const std::string m_message;
 };
 
