@@ -142,7 +142,7 @@ std::shared_ptr<IntegerExpression> Parser::parse_integer() {
 std::shared_ptr<DoubleExpression> Parser::parse_double() {
     double value = std::static_pointer_cast<DoubleToken>(last_token())->value();
     next_token();
-    return std::move(std::make_shared<DoubleExpression>(value));
+    return std::move(std::make_shared<DoubleExpression>(value, std::move(position())));
 }
 
 ExpressionPointer Parser::parse_identifier() {
@@ -364,7 +364,7 @@ std::shared_ptr<ForLoopExpression> Parser::parse_for() {
 std::shared_ptr<BinaryOperationExpression> Parser::parse_minus() {
     next_token();
     static const auto multiply = std::make_shared<OperatorToken>(TOK_MULTIPLY);
-    static const auto minusOne = std::make_shared<IntegerExpression>(-1);
+    static const auto minusOne = std::make_shared<IntegerExpression>(-1, std::move(position()));
     auto expr = parse_expression();
-    return std::make_shared<BinaryOperationExpression>(multiply, minusOne, expr, false);
+    return std::make_shared<BinaryOperationExpression>(multiply, minusOne, expr, false, std::move(position()));
 }

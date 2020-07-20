@@ -15,19 +15,20 @@
 
 
 enum ExpressionType {
-    EXPR_CONST,
-    EXPR_VAR,
-    EXPR_INTEGER,
-    EXPR_IDENTIFIER,
-    EXPR_CALL,
-    EXPR_BLOCK,
-    EXPR_PARENTHESES,
     EXPR_BINARY_OPERATION,
-    EXPR_FUNCTION,
-    EXPR_TOP_LEVEL,
+    EXPR_BLOCK,
+    EXPR_CALL,
     EXPR_CONDITION,
-    EXPR_WHILE_LOOP,
-    EXPR_FOR_LOOP
+    EXPR_CONST,
+    EXPR_DOUBLE,
+    EXPR_FOR_LOOP,
+    EXPR_FUNCTION,
+    EXPR_IDENTIFIER,
+    EXPR_INTEGER,
+    EXPR_PARENTHESES,
+    EXPR_TOP_LEVEL,
+    EXPR_VAR,
+    EXPR_WHILE_LOOP
 };
 
 typedef std::pair<std::string, TokenType> Variable;
@@ -37,10 +38,11 @@ class Expression : std::enable_shared_from_this<Expression> {
 public:
     virtual std::string to_string() const = 0;
     ~Expression() {}
-    virtual bool can_be_operand() const = 0;
     virtual bool is_boolean() const { return false; }
-    virtual ExpressionType type() const = 0;
     TextPosition position() const { return m_position; };
+
+    virtual bool can_be_operand() const = 0;
+    virtual ExpressionType type() const = 0;
 
 protected:
     Expression(const TextPosition tp) : m_position(std::move(tp)) {}
@@ -64,11 +66,11 @@ public:
         m_consts.insert(m_consts.end(), other->m_consts.begin(), other->m_consts.end());
     }
 
+    bool can_be_operand() const override { return false; }
+    ExpressionType type() const override { return EXPR_CONST; }
+
     std::string to_string() const override;
 
-    bool can_be_operand() const override { return false; }
-
-    ExpressionType type() const override { return EXPR_CONST; }
 
 private:
     std::list<std::pair<std::string, ExpressionPointer>> m_consts;
@@ -87,11 +89,10 @@ public:
         m_vars.insert(m_vars.end(), other->m_vars.begin(), other->m_vars.end());
     }
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return false; }
-
     ExpressionType type() const override { return EXPR_VAR; }
+
+    std::string to_string() const override;
 
 private:
     std::list<Variable> m_vars;
@@ -101,11 +102,12 @@ private:
 class IntegerExpression : public Expression {
 public:
     IntegerExpression(const int value, const TextPosition tp) : Expression(std::move(tp)), m_value(value) {}
-    std::string to_string() const override;
-  
+
     bool can_be_operand() const override { return true; }
     ExpressionType type() const override { return EXPR_INTEGER; }
     int value() const { return m_value; }
+
+    std::string to_string() const override;
 
 private:
     const int m_value;
@@ -114,9 +116,12 @@ private:
 
 class DoubleExpression : public Expression {
 public:
-    DoubleExpression(const double value) : m_value(value) {}
-    std::string to_string() const override;
+    DoubleExpression(const double value, const TextPosition tp) : Expression(std::move(tp)), m_value(value) {}
+
     bool can_be_operand() const override { return true; }
+    ExpressionType type() const override { return EXPR_DOUBLE; }
+
+    std::string to_string() const override;
 
 private:
     const double m_value;
@@ -128,13 +133,11 @@ public:
             Expression(std::move(tp)),
             m_value(std::move(name)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return true; }
-
     ExpressionType type() const override { return EXPR_IDENTIFIER; }
-
     std::string value() const { return m_value; }
+
+    std::string to_string() const override;
 
 private:
     const std::string m_value;
@@ -148,11 +151,10 @@ public:
             m_name(std::move(name)),
             m_arguments(std::move(arguments)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return true; }
-
     ExpressionType type() const override { return EXPR_CALL; }
+
+    std::string to_string() const override;
 
 private:
     const std::string m_name;
@@ -166,11 +168,10 @@ public:
             Expression(std::move(tp)),
             m_body(std::move(body)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return false; }
-
     ExpressionType type() const override { return EXPR_BLOCK; }
+
+    std::string to_string() const override;
 
 private:
     const std::list<ExpressionPointer> m_body;
@@ -183,13 +184,11 @@ public:
             Expression(std::move(tp)),
             m_expression(std::move(expr)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return true; }
-
     bool is_boolean() const override { return m_expression->is_boolean(); }
-
     ExpressionType type() const override { return EXPR_PARENTHESES; }
+
+    std::string to_string() const override;
 
 private:
     const ExpressionPointer m_expression;
@@ -206,14 +205,14 @@ public:
             m_right(std::move(right)),
             m_isBoolean(isBoolean) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return true; }
     bool is_boolean() const override { return m_isBoolean; }
     ExpressionType type() const override { return EXPR_BINARY_OPERATION; }
     std::shared_ptr<OperatorToken> op() const { return m_operator; }
     ExpressionPointer left() const { return m_left; }
     ExpressionPointer right() const { return m_right; }
+
+    std::string to_string() const override;
 
 private:
     const std::shared_ptr<OperatorToken> m_operator;
@@ -235,11 +234,10 @@ public:
             m_vars(std::move(vars)),
             m_body(std::move(body)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return false; }
-
     ExpressionType type() const override { return EXPR_FUNCTION; }
+
+    std::string to_string() const override;
 
 private:
     const std::string m_name;
@@ -263,11 +261,10 @@ public:
             m_vars(std::move(vars)),
             m_body(std::move(body)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return false; }
-
     ExpressionType type() const override { return EXPR_TOP_LEVEL; }
+
+    std::string to_string() const override;
 
 private:
     std::list<std::shared_ptr<FunctionExpression>> m_functions;
@@ -287,11 +284,10 @@ public:
             m_ifTrue(std::move(ifTrue)),
             m_ifFalse(std::move(ifFalse)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return false; }
-
     ExpressionType type() const override { return EXPR_CONDITION; }
+
+    std::string to_string() const override;
 
 private:
     const ExpressionPointer m_condition;
@@ -306,11 +302,10 @@ public:
             m_condition(std::move(cond)),
             m_body(std::move(body)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return false; }
-
     ExpressionType type() const override { return EXPR_WHILE_LOOP; }
+
+    std::string to_string() const override;
 
 private:
     const ExpressionPointer m_condition;
@@ -328,11 +323,10 @@ public:
             m_down(down),
             m_body(std::move(body)) {}
 
-    std::string to_string() const override;
-
     bool can_be_operand() const override { return false; }
-
     ExpressionType type() const override { return EXPR_FOR_LOOP; }
+
+    std::string to_string() const override;
 
 public:
     const std::string m_counter;
