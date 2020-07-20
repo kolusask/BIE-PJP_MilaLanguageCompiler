@@ -154,6 +154,10 @@ public:
     bool can_be_operand() const override { return true; }
     ExpressionType type() const override { return EXPR_CALL; }
 
+    std::string name() const { return m_name; }
+    size_t number_of_args() const { return m_arguments.size(); }
+    std::list<ExpressionPointer> args() const { return std::move(m_arguments); }
+
     std::string to_string() const override;
 
 private:
@@ -237,7 +241,7 @@ public:
     bool can_be_operand() const override { return false; }
     ExpressionType type() const override { return EXPR_FUNCTION; }
     std::string name() const { return m_name; }
-    size_t number_of_args() const { return m_arguments.size(); }
+    //size_t number_of_args() const { return m_arguments.size(); }
 
     std::string to_string() const override;
 

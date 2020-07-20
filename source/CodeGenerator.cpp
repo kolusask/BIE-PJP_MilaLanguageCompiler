@@ -50,9 +50,25 @@ llvm::Value *CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
 }
 
 llvm::Value *CodeGenerator::gen_call(ExpressionPointer ep) {
-    auto expr = std::static_pointer_cast<FunctionExpression>(ep);
+    auto expr = std::static_pointer_cast<CallExpression>(ep);
     auto function = m_module->getFunction(expr->name());
     if (!function)
         throw Exception(expr->position(), "Function is not defined");
 
+    // Check number of arguments
+    if (expr->number_of_args() != function->arg_size()) {
+        TextPosition argPos = expr->position();
+        argPos.column += expr->name().length() + 1;
+        throw Exception(argPos,
+                "Expected "
+                + std::to_string(function->arg_size())
+                + " arguments - got "
+                + std::to_string(expr->number_of_args()));
+    }
+
+    std::vector<llvm::Value*> args;
+    for (const auto& arg : expr->args())
+        args.push_back(generate(arg));
+
+    return m_builder.CreateCall(function, args, "calltmp");
 }
