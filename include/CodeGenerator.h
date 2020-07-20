@@ -5,6 +5,8 @@
 #ifndef BIE_PJP_MILALANGUAGECOMPILER_CODEGENERATOR_H
 #define BIE_PJP_MILALANGUAGECOMPILER_CODEGENERATOR_H
 
+#include "Expression.h"
+
 #include "llvm/ADT/APSInt.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/BasicBlock.h"
@@ -19,9 +21,10 @@
 
 
 class CodeGenerator {
+    llvm::Value* generate(const ExpressionPointer expr);
 
 private:
-
+    llvm::Value* gen_integer(const ExpressionPointer expr);
 
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_builder;

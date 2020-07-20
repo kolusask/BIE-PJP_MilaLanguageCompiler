@@ -94,8 +94,8 @@ public:
     std::string to_string() const override;
 
     bool can_be_operand() const override { return true; }
-
     ExpressionType type() const override { return EXPR_INTEGER; }
+    int value() const { return m_value; }
 
 private:
     const int m_value;
