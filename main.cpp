@@ -1,13 +1,12 @@
 #include "include/Exception.h"
 #include "include/Parser.h"
-#include "include/TextPosition.h"
 
 #include <iostream>
 #include <fstream>
 
 
-int main() {
-    const char* fileName = "/home/askar/FIT/PJP/Mila/semestralwork/samples/test.mila";
+int main(int argc, char* args[]) {
+    const char* fileName = args[1];
     std::ifstream file;
     file.open(fileName);
     Parser parser(file);
@@ -40,8 +39,6 @@ int main() {
     }
     std::cout << parser.get_source() << std::endl;
     file.close();
-
-
 
     return 0;
 }

@@ -27,6 +27,7 @@ private:
     llvm::Value* gen_integer(const ExpressionPointer ep);
     llvm::Value* gen_identifier(const ExpressionPointer ep);
     llvm::Value* gen_binary_operation(const ExpressionPointer ep);
+    llvm::Value* gen_call(const ExpressionPointer ep);
 
     llvm::LLVMContext m_context;
     llvm::IRBuilder<> m_builder;

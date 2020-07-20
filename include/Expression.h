@@ -236,6 +236,8 @@ public:
 
     bool can_be_operand() const override { return false; }
     ExpressionType type() const override { return EXPR_FUNCTION; }
+    std::string name() const { return m_name; }
+    size_t number_of_args() const { return m_arguments.size(); }
 
     std::string to_string() const override;
 

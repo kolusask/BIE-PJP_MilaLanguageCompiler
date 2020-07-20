@@ -48,3 +48,11 @@ llvm::Value *CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
     }
 
 }
+
+llvm::Value *CodeGenerator::gen_call(ExpressionPointer ep) {
+    auto expr = std::static_pointer_cast<FunctionExpression>(ep);
+    auto function = m_module->getFunction(expr->name());
+    if (!function)
+        throw Exception(expr->position(), "Function is not defined");
+
+}
