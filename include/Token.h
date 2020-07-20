@@ -51,11 +51,6 @@ public:
     virtual TokenType type() const = 0;
     virtual std::string to_string() const = 0;
     virtual int op_precedence() const { return -1; }
-
-    template<typename T>
-    std::shared_ptr<T> as() {
-        return std::static_pointer_cast<T>(shared_from_this());
-    }
 };
 
 // 'begin', 'const', 'end', 'program', '=', ';', '.', '(', ')'

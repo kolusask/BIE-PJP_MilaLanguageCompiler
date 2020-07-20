@@ -15,7 +15,7 @@ std::shared_ptr<Token> Parser::next_token() {
 }
 
 TextPosition Parser::position() {
-    return m_lexer.position();
+    return std::move(m_lexer.position());
 }
 
 std::string Parser::get_source() const {
@@ -31,33 +31,33 @@ void Parser::parse() {
 
 std::string Parser::parse_program_name() {
     if (next_token()->type() != TOK_IDENTIFIER)
-        throw Exception(position(), "Expected an identifier");
+        throw Exception(std::move(position()), "Expected an identifier");
     m_programName = last_token()->to_string();
     if (next_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(position(), ";");
+        throw ExpectedDifferentException(std::move(position()), ";");
     next_token();
     return m_programName;
 }
 
 std::shared_ptr<ConstExpression> Parser::parse_const() {
-    auto expr = std::make_shared<ConstExpression>();
+    auto expr = std::make_shared<ConstExpression>(std::move(position()));
     next_token();
     while (last_token()->type() == TOK_IDENTIFIER) {
         std::string name = last_token()->to_string();
         if (next_token()->type() != TOK_EQUAL)
-            throw ExpectedDifferentException(position(), "=");
+            throw ExpectedDifferentException(std::move(position()), "=");
         next_token();
         auto value = parse_expression();
         expr->add(name, value);
         if (last_token()->type() != TOK_SEMICOLON)
-            throw ExpectedDifferentException(position(), ";");
+            throw ExpectedDifferentException(std::move(position()), ";");
         next_token();
     }
     return expr;
 }
 
 std::shared_ptr<VarExpression> Parser::parse_var() {
-    auto expr = std::make_shared<VarExpression>();
+    auto expr = std::make_shared<VarExpression>(std::move(position()));
     next_token();
     std::list<std::string> names;
     while (last_token()->type() == TOK_IDENTIFIER) {
@@ -70,12 +70,12 @@ std::shared_ptr<VarExpression> Parser::parse_var() {
             case TOK_COLON:
                 names.push_back(std::move(name));
                 if (!Syntax::is_datatype(next_token()->type()))
-                    throw UnexpectedTokenException(position(), std::move(last_token()->to_string()));
+                    throw UnexpectedTokenException(std::move(position()), std::move(last_token()->to_string()));
                 for (const auto& n : names)
                     expr->add(n, last_token()->type());
                 names.clear();
                 if (next_token()->type() != TOK_SEMICOLON)
-                    throw ExpectedDifferentException(position(), ";");
+                    throw ExpectedDifferentException(std::move(position()), ";");
                 next_token();
             default:
                 return expr;
@@ -95,12 +95,12 @@ std::shared_ptr<TopLevelExpression> Parser::parse_top_level() {
     while (last_token()->type() != TOK_EOF) {
         switch (last_token()->type()) {
             default:
-                throw UnexpectedTokenException(position(), last_token()->to_string());
+                throw UnexpectedTokenException(std::move(position()), last_token()->to_string());
             case TOK_BEGIN: {
                 auto block = std::make_shared<TopLevelExpression>(functions, constExpr, varExpr,
-                                                                  std::move(parse_block()));
+                                                                  std::move(parse_block()), std::move(position()));
                 if (last_token()->type() != TOK_DOT)
-                    throw ExpectedDifferentException(position(), ".");
+                    throw ExpectedDifferentException(std::move(position()), ".");
                 return block;
             }
             case TOK_CONST:
@@ -136,7 +136,7 @@ ExpressionPointer Parser::parse_expression() {
 std::shared_ptr<IntegerExpression> Parser::parse_integer() {
     int value = std::static_pointer_cast<IntegerToken>(last_token())->value();
     next_token();
-    return std::move(std::make_shared<IntegerExpression>(value));
+    return std::move(std::make_shared<IntegerExpression>(value, std::move(position())));
 }
 
 std::shared_ptr<DoubleExpression> Parser::parse_double() {
@@ -154,15 +154,15 @@ ExpressionPointer Parser::parse_identifier() {
         while (last_token()->type() != TOK_CLOSE_BRACKET) {
             auto arg = parse_expression();
             if (!arg->can_be_operand())
-                throw Exception(position(), "Not a valid function argument");
+                throw Exception(std::move(position()), "Not a valid function argument");
             args.push_back(arg);
             if (last_token()->type() == TOK_COMMA)
                 next_token();
         }
         next_token();
-        return std::move(std::make_shared<CallExpression>(name, args));
+        return std::move(std::make_shared<CallExpression>(name, args, std::move(position())));
     }
-    return std::move(std::make_shared<IdentifierExpression>(name));
+    return std::move(std::make_shared<IdentifierExpression>(name, std::move(position())));
 }
 
 std::shared_ptr<BlockExpression> Parser::parse_block() {
@@ -171,22 +171,22 @@ std::shared_ptr<BlockExpression> Parser::parse_block() {
     while (last_token()->type() != TOK_END) {
         body.push_back(std::move(parse_expression()));
         if (last_token()->type() != TOK_SEMICOLON)
-            throw ExpectedDifferentException(position(), ";");
+            throw ExpectedDifferentException(std::move(position()), ";");
         next_token();
     }
     next_token();
-    return std::move(std::make_shared<BlockExpression>(body));
+    return std::move(std::make_shared<BlockExpression>(body, std::move(position())));
 }
 
 std::shared_ptr<ParenthesesExpression> Parser::parse_parentheses() {
     next_token();
     auto expr = parse_expression();
     if (!expr)
-        throw Exception(position(), "Empty parentheses");
+        throw Exception(std::move(position()), "Empty parentheses");
     if (last_token()->type() != TOK_CLOSE_BRACKET)
-        throw ExpectedDifferentException(position(), ")");
+        throw ExpectedDifferentException(std::move(position()), ")");
     next_token();
-    return std::move(std::make_shared<ParenthesesExpression>(expr));
+    return std::move(std::make_shared<ParenthesesExpression>(expr, std::move(position())));
 }
 
 ExpressionPointer Parser::parse_binary(int exprPrec, ExpressionPointer left) {;
@@ -204,14 +204,14 @@ ExpressionPointer Parser::parse_binary(int exprPrec, ExpressionPointer left) {;
             right = parse_binary(opPrec + 1, std::move(right));
 
         left = std::make_shared<BinaryOperationExpression>(std::move(std::static_pointer_cast<OperatorToken>(op)),
-                std::move(left), std::move(right), Syntax::is_bool_operator(op->type()));
+                std::move(left), std::move(right), Syntax::is_bool_operator(op->type()), std::move(position()));
     }
 }
 
 ExpressionPointer Parser::parse_single() {
     switch(last_token()->type()) {
         default:
-            throw UnexpectedTokenException(position(), last_token()->to_string());
+            throw UnexpectedTokenException(std::move(position()), last_token()->to_string());
         case TOK_BEGIN:
             return std::move(parse_block());
         case TOK_INTEGER:
@@ -239,38 +239,38 @@ ExpressionPointer Parser::parse_single() {
 
 std::shared_ptr<FunctionExpression> Parser::parse_function() {
     if (next_token()->type() != TOK_IDENTIFIER)
-        throw Exception(position(), "Function name expected");
+        throw Exception(std::move(position()), "Function name expected");
     std::string name = last_token()->to_string();
 
     if (next_token()->type() != TOK_OPEN_BRACKET)
-        throw ExpectedDifferentException(position(), "(");
+        throw ExpectedDifferentException(std::move(position()), "(");
     std::list<Variable> args;
     while (last_token()->type() != TOK_CLOSE_BRACKET) {
         next_token();
         if (last_token()->type() != TOK_IDENTIFIER)
-            throw Exception(position(), "Expected an argument name or ')'");
+            throw Exception(std::move(position()), "Expected an argument name or ')'");
         std::string aname = last_token()->to_string();
         if (next_token()->type() != TOK_COLON)
-            throw ExpectedDifferentException(position(), ":");
+            throw ExpectedDifferentException(std::move(position()), ":");
         if (!Syntax::is_datatype(next_token()->type()))
-            throw Exception(position(), last_token()->to_string() + " is not a data type");
+            throw Exception(std::move(position()), last_token()->to_string() + " is not a data type");
         TokenType atype = last_token()->type();
         args.push_back(Variable(aname, atype));
         if (next_token()->type() != TOK_COMMA && last_token()->type() != TOK_CLOSE_BRACKET)
-            throw Exception(position(), "Expected ',' or ')");
+            throw Exception(std::move(position()), "Expected ',' or ')");
     }
 
     if (next_token()->type() != TOK_COLON)
-        throw ExpectedDifferentException(position(), ":");
+        throw ExpectedDifferentException(std::move(position()), ":");
     if (!Syntax::is_datatype(next_token()->type()))
-        throw Exception(position(), last_token()->to_string() + "is not a data type");
+        throw Exception(std::move(position()), last_token()->to_string() + "is not a data type");
     TokenType type = last_token()->type();
     if (next_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(position(), ";");
+        throw ExpectedDifferentException(std::move(position()), ";");
 
     bool parsingLocals = true;
-    auto consts = std::make_shared<ConstExpression>();
-    auto vars = std::make_shared<VarExpression>();
+    auto consts = std::make_shared<ConstExpression>(std::move(position()));
+    auto vars = std::make_shared<VarExpression>(std::move(position()));
     next_token();
     while (parsingLocals) {
         switch(last_token()->type()) {
@@ -284,24 +284,24 @@ std::shared_ptr<FunctionExpression> Parser::parse_function() {
                 parsingLocals = false;
                 break;
             default:
-                throw UnexpectedTokenException(position(), last_token()->to_string());
+                throw UnexpectedTokenException(std::move(position()), last_token()->to_string());
         }
     }
 
     auto body = parse_block();
     if (last_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(position(), ";");
+        throw ExpectedDifferentException(std::move(position()), ";");
     next_token();
-    return std::make_shared<FunctionExpression>(name, type, args, consts, vars, body);
+    return std::make_shared<FunctionExpression>(name, type, args, consts, vars, body, std::move(position()));
 }
 
 std::shared_ptr<ConditionExpression> Parser::parse_condition() {
     next_token();
     auto condition = parse_expression();
     if (!condition->is_boolean())
-        throw Exception(position(), "Condition must be a boolean expression");
+        throw Exception(std::move(position()), "Condition must be a boolean expression");
     if (last_token()->type() != TOK_THEN)
-        throw ExpectedDifferentException(position(), "then");
+        throw ExpectedDifferentException(std::move(position()), "then");
     next_token();
     auto ifTrue = parse_expression();
     ExpressionPointer ifFalse = nullptr;
@@ -310,35 +310,35 @@ std::shared_ptr<ConditionExpression> Parser::parse_condition() {
         ifFalse = parse_expression();
     }
     if (last_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(position(), ";");
-    return std::make_shared<ConditionExpression>(condition, ifTrue, ifFalse);
+        throw ExpectedDifferentException(std::move(position()), ";");
+    return std::make_shared<ConditionExpression>(condition, ifTrue, ifFalse, std::move(position()));
 }
 
 std::shared_ptr<WhileLoopExpression> Parser::parse_while() {
     next_token();
     auto condition = parse_expression();
     if (!condition->is_boolean())
-        throw Exception(position(), "Condition must be a boolean expression");
+        throw Exception(std::move(position()), "Condition must be a boolean expression");
     if (last_token()->type() != TOK_DO)
-        throw ExpectedDifferentException(position(), "do");
+        throw ExpectedDifferentException(std::move(position()), "do");
     next_token();
     auto body = parse_expression();
     if (last_token()->type() != TOK_SEMICOLON)
-        throw ExpectedDifferentException(position(), ";");
-    return std::make_shared<WhileLoopExpression>(condition, body);
+        throw ExpectedDifferentException(std::move(position()), ";");
+    return std::make_shared<WhileLoopExpression>(condition, body, std::move(position()));
 }
 
 std::shared_ptr<ForLoopExpression> Parser::parse_for() {
     if (next_token()->type() != TOK_IDENTIFIER)
-        throw Exception(position(), "Expected a counter variable name");
+        throw Exception(std::move(position()), "Expected a counter variable name");
     std::string counter = last_token()->to_string();
     if (next_token()->type() != TOK_ASSIGN)
-        throw ExpectedDifferentException(position(), ":=");
+        throw ExpectedDifferentException(std::move(position()), ":=");
 
     next_token();
     auto start = parse_expression();
     if (!start->can_be_operand())
-        throw Exception(position(), "Invalid starting value");
+        throw Exception(std::move(position()), "Invalid starting value");
 
     bool downto;
     if (last_token()->type() == TOK_TO)
@@ -346,19 +346,19 @@ std::shared_ptr<ForLoopExpression> Parser::parse_for() {
     else if (last_token()->type() == TOK_DOWNTO)
         downto = true;
     else
-        throw Exception(position(), "Expected 'to' or 'downto'");
+        throw Exception(std::move(position()), "Expected 'to' or 'downto'");
 
     next_token();
     auto finish = parse_expression();
     if (!finish->can_be_operand())
-        throw Exception(position(), "Invalid final value");
+        throw Exception(std::move(position()), "Invalid final value");
 
     if (last_token()->type() != TOK_DO)
-        throw ExpectedDifferentException(position(), "do");
+        throw ExpectedDifferentException(std::move(position()), "do");
 
     next_token();
     auto body = parse_expression();
-    return std::make_shared<ForLoopExpression>(counter, start, finish, downto, body);
+    return std::make_shared<ForLoopExpression>(counter, start, finish, downto, body, std::move(position()));
 }
 
 std::shared_ptr<BinaryOperationExpression> Parser::parse_minus() {

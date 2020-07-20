@@ -5,19 +5,8 @@
 #ifndef BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 #define BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
 
+#include "TextPosition.h"
 #include "Token.h"
-
-#include "llvm/ADT/APSInt.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
-#include "llvm/IR/DerivedTypes.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Type.h"
-#include "llvm/IR/Verifier.h"
 
 #include <memory>
 #include <sstream>
@@ -25,29 +14,48 @@
 #include <list>
 
 
+enum ExpressionType {
+    EXPR_CONST,
+    EXPR_VAR,
+    EXPR_INTEGER,
+    EXPR_IDENTIFIER,
+    EXPR_CALL,
+    EXPR_BLOCK,
+    EXPR_PARENTHESES,
+    EXPR_BINARY_OPERATION,
+    EXPR_FUNCTION,
+    EXPR_TOP_LEVEL,
+    EXPR_CONDITION,
+    EXPR_WHILE_LOOP,
+    EXPR_FOR_LOOP
+};
+
 typedef std::pair<std::string, TokenType> Variable;
 
 // Base class for all expressions in abstract syntax tree
-class Expression : public std::enable_shared_from_this<Expression> {
+class Expression : std::enable_shared_from_this<Expression> {
 public:
     virtual std::string to_string() const = 0;
     ~Expression() {}
-    template<typename T>
-    std::shared_ptr<T> as() { return std::static_pointer_cast<T>(shared_from_this()); }
     virtual bool can_be_operand() const = 0;
     virtual bool is_boolean() const { return false; }
+    virtual ExpressionType type() const = 0;
+    TextPosition position() const { return m_position; };
 
 protected:
-    static llvm::LLVMContext s_context;
-    static llvm::IRBuilder<> s_builder;
-    static std::unique_ptr<llvm::Module> s_module;
-    static std::map<std::string, llvm::Value *> s_namedValues;
+    Expression(const TextPosition tp) : m_position(std::move(tp)) {}
+
+private:
+    const TextPosition m_position;
 };
 
 typedef std::shared_ptr<Expression> ExpressionPointer;
 
+
 class ConstExpression : public Expression {
 public:
+    ConstExpression(const TextPosition tp) : Expression(std::move(tp)) {}
+
     void add(const std::string name, const ExpressionPointer value) {
         m_consts.push_back(std::pair<const std::string, const ExpressionPointer>(std::move(name), std::move(value)));
     }
@@ -57,14 +65,20 @@ public:
     }
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_CONST; }
 
 private:
     std::list<std::pair<std::string, ExpressionPointer>> m_consts;
 };
 
+
 class VarExpression : public Expression {
 public:
+    VarExpression(const TextPosition tp) : Expression(std::move(tp)) {}
+
     void add(const std::string name, const TokenType type) {
         m_vars.push_back(Variable(std::move(name), std::move(type)));
     }
@@ -74,7 +88,10 @@ public:
     }
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_VAR; }
 
 private:
     std::list<Variable> m_vars;
@@ -83,13 +100,17 @@ private:
 
 class IntegerExpression : public Expression {
 public:
-    IntegerExpression(const int value) : m_value(value) {}
+    IntegerExpression(const int value, const TextPosition tp) : Expression(std::move(tp)), m_value(value) {}
     std::string to_string() const override;
+  
     bool can_be_operand() const override { return true; }
+    ExpressionType type() const override { return EXPR_INTEGER; }
+    int value() const { return m_value; }
 
 private:
     const int m_value;
 };
+
 
 class DoubleExpression : public Expression {
 public:
@@ -103,23 +124,35 @@ private:
 
 class IdentifierExpression : public Expression {
 public:
-    IdentifierExpression(std::string name) : m_value(std::move(name)) {}
+    IdentifierExpression(std::string name, const TextPosition tp) :
+            Expression(std::move(tp)),
+            m_value(std::move(name)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return true; }
+
+    ExpressionType type() const override { return EXPR_IDENTIFIER; }
+
+    std::string value() const { return m_value; }
 
 private:
     const std::string m_value;
 };
 
+
 class CallExpression : public Expression {
 public:
-    CallExpression(std::string& name, std::list<ExpressionPointer>& arguments) :
+    CallExpression(std::string& name, std::list<ExpressionPointer>& arguments, const TextPosition tp) :
+            Expression(std::move(tp)),
             m_name(std::move(name)),
             m_arguments(std::move(arguments)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return true; }
+
+    ExpressionType type() const override { return EXPR_CALL; }
 
 private:
     const std::string m_name;
@@ -129,58 +162,58 @@ private:
 // begin ... end
 class BlockExpression : public Expression {
 public:
-    BlockExpression(std::list<ExpressionPointer>& body) : m_body(std::move(body)) {}
+    BlockExpression(std::list<ExpressionPointer>& body, const TextPosition tp) :
+            Expression(std::move(tp)),
+            m_body(std::move(body)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_BLOCK; }
 
 private:
     const std::list<ExpressionPointer> m_body;
 };
 
-/*// const ... var ... begin ... begin ... end ... end
-class BodyExpression : public Expression {
-public:
-    BodyExpression(const std::shared_ptr<ConstExpression> constExp, const std::shared_ptr<VarExpression> varExp,
-                   const std::shared_ptr<BlockExpression> blkExp) :
-            m_const(constExp),
-            m_var(varExp),
-            m_block(blkExp) {}
-
-    std::string to_string() const override;
-    bool can_be_operand() const override { return false; }
-
-private:
-    const std::shared_ptr<ConstExpression> m_const;
-    const std::shared_ptr<VarExpression> m_var;
-    const std::shared_ptr<BlockExpression> m_block;
-};*/
 
 class ParenthesesExpression : public Expression {
 public:
-    ParenthesesExpression(const ExpressionPointer expr) : m_expression(std::move(expr)) {}
+    ParenthesesExpression(const ExpressionPointer expr, const TextPosition tp) :
+            Expression(std::move(tp)),
+            m_expression(std::move(expr)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return true; }
+
     bool is_boolean() const override { return m_expression->is_boolean(); }
+
+    ExpressionType type() const override { return EXPR_PARENTHESES; }
 
 private:
     const ExpressionPointer m_expression;
 };
 
+
 class BinaryOperationExpression : public Expression {
 public:
     BinaryOperationExpression(const std::shared_ptr<OperatorToken> op, const ExpressionPointer left,
-                              const ExpressionPointer right, bool isBoolean) :
+                              const ExpressionPointer right, bool isBoolean, const TextPosition tp) :
+            Expression(std::move(tp)),
             m_operator(std::move(op)),
             m_left(std::move(left)),
             m_right(std::move(right)),
             m_isBoolean(isBoolean) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return true; }
     bool is_boolean() const override { return m_isBoolean; }
-
+    ExpressionType type() const override { return EXPR_BINARY_OPERATION; }
+    std::shared_ptr<OperatorToken> op() const { return m_operator; }
+    ExpressionPointer left() const { return m_left; }
+    ExpressionPointer right() const { return m_right; }
 
 private:
     const std::shared_ptr<OperatorToken> m_operator;
@@ -193,7 +226,8 @@ class FunctionExpression : public Expression {
 public:
     FunctionExpression(const std::string name, TokenType type, const std::list<Variable> args,
                        const std::shared_ptr<ConstExpression> consts, const std::shared_ptr<VarExpression> vars,
-                       const std::shared_ptr<BlockExpression> body) :
+                       const std::shared_ptr<BlockExpression> body, const TextPosition tp) :
+            Expression(std::move(tp)),
             m_name(std::move(name)),
             m_type(type),
             m_arguments(std::move(args)),
@@ -202,7 +236,10 @@ public:
             m_body(std::move(body)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_FUNCTION; }
 
 private:
     const std::string m_name;
@@ -218,14 +255,19 @@ public:
     TopLevelExpression(const std::list<std::shared_ptr<FunctionExpression>> functions,
                        const std::shared_ptr<ConstExpression> consts,
                        const std::shared_ptr<VarExpression> vars,
-                       const std::shared_ptr<BlockExpression> body) :
+                       const std::shared_ptr<BlockExpression> body,
+                       const TextPosition tp) :
+            Expression(std::move(tp)),
             m_functions(std::move(functions)),
             m_consts(std::move(consts)),
             m_vars(std::move(vars)),
             m_body(std::move(body)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_TOP_LEVEL; }
 
 private:
     std::list<std::shared_ptr<FunctionExpression>> m_functions;
@@ -236,13 +278,20 @@ private:
 
 class ConditionExpression : public Expression {
 public:
-    ConditionExpression(const ExpressionPointer cond, const ExpressionPointer ifTrue, const ExpressionPointer ifFalse) :
+    ConditionExpression(const ExpressionPointer cond,
+                        const ExpressionPointer ifTrue,
+                        const ExpressionPointer ifFalse,
+                        const TextPosition tp) :
+            Expression(std::move(tp)),
             m_condition(std::move(cond)),
             m_ifTrue(std::move(ifTrue)),
             m_ifFalse(std::move(ifFalse)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_CONDITION; }
 
 private:
     const ExpressionPointer m_condition;
@@ -252,12 +301,16 @@ private:
 
 class WhileLoopExpression : public Expression {
 public:
-    WhileLoopExpression(const ExpressionPointer cond, const ExpressionPointer body) :
+    WhileLoopExpression(const ExpressionPointer cond, const ExpressionPointer body, const TextPosition tp) :
+            Expression(std::move(tp)),
             m_condition(std::move(cond)),
             m_body(std::move(body)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_WHILE_LOOP; }
 
 private:
     const ExpressionPointer m_condition;
@@ -267,7 +320,8 @@ private:
 class ForLoopExpression : public Expression {
 public:
     ForLoopExpression(const std::string counter, const ExpressionPointer start, const ExpressionPointer finish,
-                      bool down, const ExpressionPointer body) :
+                      bool down, const ExpressionPointer body, const TextPosition tp) :
+            Expression(std::move(tp)),
             m_counter(std::move(counter)),
             m_start(std::move(start)),
             m_finish(std::move(finish)),
@@ -275,7 +329,10 @@ public:
             m_body(std::move(body)) {}
 
     std::string to_string() const override;
+
     bool can_be_operand() const override { return false; }
+
+    ExpressionType type() const override { return EXPR_FOR_LOOP; }
 
 public:
     const std::string m_counter;
