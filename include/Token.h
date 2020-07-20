@@ -19,6 +19,7 @@ enum TokenType {
     TOK_CONST,
     TOK_DO,
     TOK_DOT,
+    TOK_DOUBLE,
     TOK_DOWNTO,
     TOK_END,
     TOK_ELSE,
@@ -89,13 +90,24 @@ private:
 
 class IntegerToken : public Token {
 public:
-    IntegerToken(const int value) : m_value(value) {}
+    IntegerToken(int value) : m_value(value) {}
     TokenType type() const override { return TOK_INTEGER; }
     int value() const { return m_value; }
     std::string to_string() const override { return std::to_string(m_value); }
 
 private:
     const int m_value;
+};
+
+class DoubleToken : public Token {
+public:
+    DoubleToken(double value) : m_value(value) {}
+    TokenType type() const override { return TOK_DOUBLE; }
+    double value() const { return m_value; }
+    std::string to_string() const override { return std::to_string(m_value); }
+
+private:
+    const double m_value;
 };
 
 class OperatorToken : public Token {

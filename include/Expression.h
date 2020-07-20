@@ -102,7 +102,7 @@ class IntegerExpression : public Expression {
 public:
     IntegerExpression(const int value, const TextPosition tp) : Expression(std::move(tp)), m_value(value) {}
     std::string to_string() const override;
-
+  
     bool can_be_operand() const override { return true; }
     ExpressionType type() const override { return EXPR_INTEGER; }
     int value() const { return m_value; }
@@ -111,6 +111,16 @@ private:
     const int m_value;
 };
 
+
+class DoubleExpression : public Expression {
+public:
+    DoubleExpression(const double value) : m_value(value) {}
+    std::string to_string() const override;
+    bool can_be_operand() const override { return true; }
+
+private:
+    const double m_value;
+};
 
 class IdentifierExpression : public Expression {
 public:

@@ -4,7 +4,6 @@
 
 #include "../include/Expression.h"
 
-#include "../include/Exception.h"
 
 std::string IntegerExpression::to_string() const {
     return std::to_string(m_value);
@@ -115,4 +114,8 @@ std::string ForLoopExpression::to_string() const {
         << m_finish->to_string() << " do " << std::endl;
     oss << m_body->to_string();
     return oss.str();
+}
+
+std::string DoubleExpression::to_string() const {
+    return std::to_string(m_value);
 }

@@ -30,11 +30,11 @@ int Lexer::read_char() {
     return m_char;
 }
 
-int Lexer::read_number() {
-    int number = m_char - '0';
-    while (std::isdigit(read_char()))
-        number = number * 10 + (m_char - '0');
-    return number;
+double Lexer::read_number(bool& isDouble) {
+    std::string number(1, m_char);
+    while (std::isdigit(read_char()) || (!isDouble && (isDouble = (m_char == '.'))))
+        number += m_char;
+    return std::stod(number);
 }
 
 std::string Lexer::read_identifier() {
@@ -46,8 +46,13 @@ std::string Lexer::read_identifier() {
 
 std::string Lexer::read_operator() {
     std::string op(1, m_char);
-    while (is_in_operator(read_char()))
+    while (is_in_operator(read_char())) {
         op += m_char;
+        if (m_char == '=') {
+            read_char();
+            break;
+        }
+    }
     return std::move(op);
 }
 
@@ -66,8 +71,13 @@ std::shared_ptr<Token> Lexer::next_token() {
         case std::istream::eofbit:
             return as_token<SimpleToken, TokenType>(TOK_EOF);
         // number
-        case '0' ... '9':
-            return as_token<IntegerToken, int>(read_number());
+        case '0' ... '9': {
+            bool isDouble = false;
+            double value = read_number(isDouble);
+            if (isDouble)
+                return as_token<DoubleToken, double>(value);
+            return as_token<IntegerToken, int>(int(value));
+        }
         // multi character string
         case 'a' ... 'z':
         case 'A' ... 'Z': {

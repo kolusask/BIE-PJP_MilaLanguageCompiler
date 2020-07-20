@@ -21,7 +21,7 @@ public:
 
 private:
     int read_char();
-    int read_number();
+    double read_number(bool& isDouble);
     std::string read_identifier();
     std::string read_operator();
     bool is_in_operator(const char ch) const;

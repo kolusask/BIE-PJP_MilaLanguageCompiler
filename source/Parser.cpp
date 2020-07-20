@@ -139,6 +139,12 @@ std::shared_ptr<IntegerExpression> Parser::parse_integer() {
     return std::move(std::make_shared<IntegerExpression>(value, std::move(position())));
 }
 
+std::shared_ptr<DoubleExpression> Parser::parse_double() {
+    double value = std::static_pointer_cast<DoubleToken>(last_token())->value();
+    next_token();
+    return std::move(std::make_shared<DoubleExpression>(value));
+}
+
 ExpressionPointer Parser::parse_identifier() {
     std::string name = std::move(last_token()->to_string());
     if (next_token()->type() == TOK_OPEN_BRACKET) {
@@ -210,6 +216,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_block());
         case TOK_INTEGER:
             return std::move(parse_integer());
+        case TOK_DOUBLE:
+            return std::move(parse_double());
         case TOK_IDENTIFIER:
             return std::move(parse_identifier());
         case TOK_OPEN_BRACKET:
@@ -220,6 +228,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_while());
         case TOK_FOR:
             return std::move(parse_for());
+        case TOK_MINUS:
+            return std::move(parse_minus());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -351,3 +361,10 @@ std::shared_ptr<ForLoopExpression> Parser::parse_for() {
     return std::make_shared<ForLoopExpression>(counter, start, finish, downto, body, std::move(position()));
 }
 
+std::shared_ptr<BinaryOperationExpression> Parser::parse_minus() {
+    next_token();
+    static const auto multiply = std::make_shared<OperatorToken>(TOK_MULTIPLY);
+    static const auto minusOne = std::make_shared<IntegerExpression>(-1);
+    auto expr = parse_expression();
+    return std::make_shared<BinaryOperationExpression>(multiply, minusOne, expr, false);
+}
