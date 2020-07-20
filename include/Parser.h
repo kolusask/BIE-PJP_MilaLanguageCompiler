@@ -26,6 +26,7 @@ private:
     ExpressionPointer parse_binary(int exprPrec, ExpressionPointer left);
     ExpressionPointer parse_identifier();   // or a function call
     std::shared_ptr<IntegerExpression> parse_integer();
+    std::shared_ptr<DoubleExpression> parse_double();
     std::shared_ptr<TopLevelExpression> parse_top_level();
     std::shared_ptr<ConstExpression> parse_const();
     std::shared_ptr<VarExpression> parse_var();

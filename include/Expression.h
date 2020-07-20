@@ -34,7 +34,6 @@ public:
     ~Expression() {}
     template<typename T>
     std::shared_ptr<T> as() { return std::static_pointer_cast<T>(shared_from_this()); }
-    virtual llvm::Value* codegen() const { return nullptr; }
     virtual bool can_be_operand() const = 0;
     virtual bool is_boolean() const { return false; }
 
@@ -86,11 +85,20 @@ class IntegerExpression : public Expression {
 public:
     IntegerExpression(const int value) : m_value(value) {}
     std::string to_string() const override;
-    llvm::Value* codegen() const override;
     bool can_be_operand() const override { return true; }
 
 private:
     const int m_value;
+};
+
+class DoubleExpression : public Expression {
+public:
+    DoubleExpression(const double value) : m_value(value) {}
+    std::string to_string() const override;
+    bool can_be_operand() const override { return true; }
+
+private:
+    const double m_value;
 };
 
 class IdentifierExpression : public Expression {

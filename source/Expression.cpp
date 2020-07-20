@@ -10,16 +10,6 @@ std::unique_ptr<llvm::Module> Expression::s_module =
         std::make_unique<llvm::Module>("JIT Module", Expression::s_context);
 std::map<std::string, llvm::Value *> Expression::s_namedValues;
 
-/////////////////////////////////////////////////
-//  Code generation
-/////////////////////////////////////////////////
-llvm::Value* IntegerExpression::codegen() const {
-    return llvm::ConstantInt::get(s_context, llvm::APSInt(m_value));
-}
-
-
-
-
 //////////////////////////////////////////////////
 //  Debug outputs
 //////////////////////////////////////////////////
@@ -131,4 +121,8 @@ std::string ForLoopExpression::to_string() const {
         << m_finish->to_string() << " do " << std::endl;
     oss << m_body->to_string();
     return oss.str();
+}
+
+std::string DoubleExpression::to_string() const {
+    return std::to_string(m_value);
 }

@@ -139,6 +139,12 @@ std::shared_ptr<IntegerExpression> Parser::parse_integer() {
     return std::move(std::make_shared<IntegerExpression>(value));
 }
 
+std::shared_ptr<DoubleExpression> Parser::parse_double() {
+    double value = std::static_pointer_cast<DoubleToken>(last_token())->value();
+    next_token();
+    return std::move(std::make_shared<DoubleExpression>(value));
+}
+
 ExpressionPointer Parser::parse_identifier() {
     std::string name = std::move(last_token()->to_string());
     if (next_token()->type() == TOK_OPEN_BRACKET) {
@@ -210,6 +216,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_block());
         case TOK_INTEGER:
             return std::move(parse_integer());
+        case TOK_DOUBLE:
+            return std::move(parse_double());
         case TOK_IDENTIFIER:
             return std::move(parse_identifier());
         case TOK_OPEN_BRACKET:
@@ -350,4 +358,5 @@ std::shared_ptr<ForLoopExpression> Parser::parse_for() {
     auto body = parse_expression();
     return std::make_shared<ForLoopExpression>(counter, start, finish, downto, body);
 }
+
 
