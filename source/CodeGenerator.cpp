@@ -5,7 +5,7 @@
 #include "../include/CodeGenerator.h"
 #include "../include/Exception.h"
 
-llvm::Value *CodeGenerator::generate(const ExpressionPointer expr) {
+llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
     switch(expr->type()) {
         case EXPR_INTEGER:
             return gen_integer(std::move(expr));
@@ -17,26 +17,31 @@ llvm::Value *CodeGenerator::generate(const ExpressionPointer expr) {
             return gen_call(std::move(expr));
         case EXPR_FUNCTION:
             return gen_function(std::move(expr));
+        case EXPR_CONDITION:
+            return gen_condition(std::move(expr));
         default:
             return nullptr;
     }
 }
 
-llvm::Value *CodeGenerator::gen_integer(const ExpressionPointer ep) {
+llvm::Value* CodeGenerator::gen_integer(const ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<IntegerExpression>(ep);
+
     return llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
 }
 
-llvm::Value *CodeGenerator::gen_identifier(const ExpressionPointer ep) {
+llvm::Value* CodeGenerator::gen_identifier(const ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<IdentifierExpression>(ep);
+
     auto value = m_variables[expr->value()];
     if (!value)
         throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
     return value;
 }
 
-llvm::Value *CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
+llvm::Value* CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
+
     auto left = generate(expr->left());
     auto right = generate(expr->right());
     switch(expr->op()->type()) {
@@ -53,8 +58,9 @@ llvm::Value *CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
 
 }
 
-llvm::Value *CodeGenerator::gen_call(ExpressionPointer ep) {
+llvm::Value* CodeGenerator::gen_call(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<CallExpression>(ep);
+
     auto function = m_module->getFunction(expr->name());
     if (!function)
         throw Exception(expr->position(), "Function is not defined");
@@ -77,7 +83,7 @@ llvm::Value *CodeGenerator::gen_call(ExpressionPointer ep) {
     return m_builder.CreateCall(function, args, "calltmp");
 }
 
-llvm::Type *CodeGenerator::get_type(TokenType type) {
+llvm::Type* CodeGenerator::get_type(TokenType type) {
     switch (type) {
         case TOK_INTEGER:
             return llvm::Type::getDoubleTy(m_context);
@@ -86,8 +92,9 @@ llvm::Type *CodeGenerator::get_type(TokenType type) {
     }
 }
 
-llvm::Value *CodeGenerator::gen_function(ExpressionPointer ep) {
+llvm::Value* CodeGenerator::gen_function(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<FunctionExpression>(ep);
+
     std::vector<llvm::Type*> types;
     for (auto tt : expr->types())
         types.push_back(get_type(tt));
@@ -105,5 +112,36 @@ llvm::Value *CodeGenerator::gen_function(ExpressionPointer ep) {
     llvm::verifyFunction(*function);
 
     return function;
+}
+
+llvm::Value* CodeGenerator::gen_condition(ExpressionPointer ep) {
+    auto expr = std::static_pointer_cast<ConditionExpression>(ep);
+    // if-condition
+    auto condValue = generate(expr->condition());
+    condValue = m_builder.CreateFCmpONE(condValue, llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
+
+    auto function = m_builder.GetInsertBlock()->getParent();
+    // blocks
+    auto thenBlock = llvm::BasicBlock::Create(m_context, "then", function);
+    auto elseBlock = llvm::BasicBlock::Create(m_context, "else");
+    auto mergeBlock = llvm::BasicBlock::Create(m_context, "ifcont");
+    // split
+    m_builder.CreateCondBr(condValue, thenBlock, elseBlock);
+    // then
+    m_builder.SetInsertPoint(thenBlock);
+    auto thenValue = generate(expr->thenBody());
+    m_builder.CreateBr(mergeBlock);
+    thenBlock = m_builder.GetInsertBlock();
+    // else
+    function->getBasicBlockList().push_back(elseBlock);
+    m_builder.SetInsertPoint(elseBlock);
+    auto elseValue = generate(expr->elseBody());
+    m_builder.CreateBr(mergeBlock);
+    elseBlock = m_builder.GetInsertBlock();
+    // merge
+    function->getBasicBlockList().push_back(mergeBlock);
+    m_builder.SetInsertPoint(mergeBlock);
+    //auto phiNode = m_builder.CreatePHI(llvm::)
+    return nullptr;
 }
 

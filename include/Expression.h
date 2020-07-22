@@ -304,6 +304,10 @@ public:
     bool can_be_operand() const override { return false; }
     ExpressionType type() const override { return EXPR_CONDITION; }
 
+    ExpressionPointer condition() const { return std::move(m_condition); }
+    ExpressionPointer thenBody() const { return std::move(m_ifTrue); }
+    ExpressionPointer elseBody() const { return std::move(m_ifFalse); }
+
     std::string to_string() const override;
 
 private:

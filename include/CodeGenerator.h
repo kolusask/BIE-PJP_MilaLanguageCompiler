@@ -30,6 +30,7 @@ private:
     llvm::Value* gen_binary_operation(const ExpressionPointer ep);
     llvm::Value* gen_call(const ExpressionPointer ep);
     llvm::Value* gen_function(const ExpressionPointer ep);
+    llvm::Value* gen_condition(const ExpressionPointer ep);
 
     llvm::Type* get_type(TokenType type);
 
