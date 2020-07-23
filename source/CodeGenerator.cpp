@@ -5,60 +5,60 @@
 #include "../include/CodeGenerator.h"
 #include "../include/Exception.h"
 
-llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
+GeneratedCode CodeGenerator::generate(const ExpressionPointer expr) {
     switch(expr->type()) {
         case EXPR_INTEGER:
-            return gen_integer(std::move(expr));
+            return std::move(gen_integer(std::move(expr)));
         case EXPR_IDENTIFIER:
-            return gen_identifier(std::move(expr));
+            return std::move(gen_identifier(std::move(expr)));
         case EXPR_BINARY_OPERATION:
-            return gen_binary_operation(std::move(expr));
+            return std::move(gen_binary_operation(std::move(expr)));
         case EXPR_CALL:
-            return gen_call(std::move(expr));
+            return std::move(gen_call(std::move(expr)));
         case EXPR_FUNCTION:
-            return gen_function(std::move(expr));
+            return std::move(gen_function(std::move(expr)));
         case EXPR_CONDITION:
-            return gen_condition(std::move(expr));
+            return std::move(gen_condition(std::move(expr)));
         default:
             return nullptr;
     }
 }
 
-llvm::Value* CodeGenerator::gen_integer(const ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_integer(const ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<IntegerExpression>(ep);
 
-    return llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
+    return std::move(GeneratedCode(llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()))));
 }
 
-llvm::Value* CodeGenerator::gen_identifier(const ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_identifier(const ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<IdentifierExpression>(ep);
 
     auto value = m_variables[expr->value()];
     if (!value)
         throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
-    return value;
+    return std::move(GeneratedCode(value));
 }
 
-llvm::Value* CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
 
     auto left = generate(expr->left());
     auto right = generate(expr->right());
     switch(expr->op()->type()) {
         case TOK_PLUS:
-            return m_builder.CreateFAdd(left, right, "addtmp");
+            return std::move(GeneratedCode(m_builder.CreateFAdd(left.value(), right.value(), "addtmp")));
         case TOK_MINUS:
-            return m_builder.CreateFSub(left, right, "subtmp");
+            return std::move(GeneratedCode(m_builder.CreateFSub(left.value(), right.value(), "subtmp")));
         case TOK_MULTIPLY:
-            return m_builder.CreateFMul(left, right, "multmp");
+            return std::move(GeneratedCode(m_builder.CreateFMul(left.value(), right.value(), "multmp")));
         case TOK_LESS:
-            return m_builder.CreateFCmpULT(left, right, "cmptmp");
-        default: return nullptr;
+            return std::move(GeneratedCode(m_builder.CreateFCmpULT(left.value(), right.value(), "cmptmp")));
+        default: throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 
 }
 
-llvm::Value* CodeGenerator::gen_call(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_call(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<CallExpression>(ep);
 
     auto function = m_module->getFunction(expr->name());
@@ -78,9 +78,9 @@ llvm::Value* CodeGenerator::gen_call(ExpressionPointer ep) {
 
     std::vector<llvm::Value*> args;
     for (const auto& arg : expr->args())
-        args.push_back(generate(arg));
+        args.push_back(generate(arg).value());
 
-    return m_builder.CreateCall(function, args, "calltmp");
+    return std::move(GeneratedCode(m_builder.CreateCall(function, args, "calltmp")));
 }
 
 llvm::Type* CodeGenerator::get_type(TokenType type) {
@@ -92,7 +92,7 @@ llvm::Type* CodeGenerator::get_type(TokenType type) {
     }
 }
 
-llvm::Value* CodeGenerator::gen_function(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_function(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<FunctionExpression>(ep);
 
     std::vector<llvm::Type*> types;
@@ -108,17 +108,17 @@ llvm::Value* CodeGenerator::gen_function(ExpressionPointer ep) {
         m_variables[arg.getName()] = &arg;
 
     auto retVal = generate(expr->body());
-    m_builder.CreateRet(retVal);
+    m_builder.CreateRet(retVal.value());
     llvm::verifyFunction(*function);
 
-    return function;
+    return std::move(GeneratedCode(function));
 }
 
-llvm::Value* CodeGenerator::gen_condition(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
     auto condValue = generate(expr->condition());
-    condValue = m_builder.CreateFCmpONE(condValue, llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
+    condValue = m_builder.CreateFCmpONE(condValue.value(), llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
 
     auto function = m_builder.GetInsertBlock()->getParent();
     // blocks
@@ -126,7 +126,7 @@ llvm::Value* CodeGenerator::gen_condition(ExpressionPointer ep) {
     auto elseBlock = llvm::BasicBlock::Create(m_context, "else");
     auto mergeBlock = llvm::BasicBlock::Create(m_context, "ifcont");
     // split
-    m_builder.CreateCondBr(condValue, thenBlock, elseBlock);
+    m_builder.CreateCondBr(condValue.value(), thenBlock, elseBlock);
     // then
     m_builder.SetInsertPoint(thenBlock);
     auto thenValue = generate(expr->thenBody());
@@ -142,6 +142,6 @@ llvm::Value* CodeGenerator::gen_condition(ExpressionPointer ep) {
     function->getBasicBlockList().push_back(mergeBlock);
     m_builder.SetInsertPoint(mergeBlock);
     //auto phiNode = m_builder.CreatePHI(llvm::)
-    return nullptr;
+    throw Exception(expr->position(), "NOT IMPLEMENTED");
 }
 

@@ -19,37 +19,29 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 
-class GeneratedCode {};
-
-class SingleGeneratedCode : public GeneratedCode {
+class GeneratedCode {
 public:
-    SingleGeneratedCode(const llvm::Value* value) : m_value(value) {}
+    GeneratedCode(const std::list<llvm::Value*> values) : m_values(std::move(values)) {}
+    explicit GeneratedCode(llvm::Value* value) : m_values({value}) {}
 
-private:
-    const llvm::Value* m_value;
-};
-
-class MultipleGeneratedCode : public GeneratedCode {
-public:
-    MultipleGeneratedCode(const std::list<llvm::Value*> values) : m_values(values) {}
+    llvm::Value* value() const { return *m_values.begin(); }
 
 private:
     const std::list<llvm::Value*> m_values;
-};
 
-typedef std::shared_ptr<GeneratedCode> GenResult;
+};
 
 class CodeGenerator {
 public:
-    GenResult generate(const ExpressionPointer expr);
+    GeneratedCode generate(const ExpressionPointer expr);
 
 private:
-    GenResult gen_integer(const ExpressionPointer ep);
-    GenResult gen_identifier(const ExpressionPointer ep);
-    GenResult gen_binary_operation(const ExpressionPointer ep);
-    GenResult gen_call(const ExpressionPointer ep);
-    GenResult gen_function(const ExpressionPointer ep);
-    GenResult gen_condition(const ExpressionPointer ep);
+    GeneratedCode gen_integer(const ExpressionPointer ep);
+    GeneratedCode gen_identifier(const ExpressionPointer ep);
+    GeneratedCode gen_binary_operation(const ExpressionPointer ep);
+    GeneratedCode gen_call(const ExpressionPointer ep);
+    GeneratedCode gen_function(const ExpressionPointer ep);
+    GeneratedCode gen_condition(const ExpressionPointer ep);
 
     llvm::Type* get_type(TokenType type);
 
