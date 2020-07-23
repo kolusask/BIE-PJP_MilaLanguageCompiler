@@ -20,7 +20,7 @@ GeneratedCode CodeGenerator::generate(const ExpressionPointer expr) {
         case EXPR_CONDITION:
             return std::move(gen_condition(std::move(expr)));
         default:
-            return nullptr;
+            throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 }
 
@@ -117,8 +117,8 @@ GeneratedCode CodeGenerator::gen_function(ExpressionPointer ep) {
 GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
-    auto condValue = generate(expr->condition());
-    condValue = m_builder.CreateFCmpONE(condValue.value(), llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
+    auto condValue = m_builder.CreateFCmpONE(
+            generate(expr->condition()).value(), llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
 
     auto function = m_builder.GetInsertBlock()->getParent();
     // blocks
@@ -126,7 +126,7 @@ GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
     auto elseBlock = llvm::BasicBlock::Create(m_context, "else");
     auto mergeBlock = llvm::BasicBlock::Create(m_context, "ifcont");
     // split
-    m_builder.CreateCondBr(condValue.value(), thenBlock, elseBlock);
+    m_builder.CreateCondBr(condValue, thenBlock, elseBlock);
     // then
     m_builder.SetInsertPoint(thenBlock);
     auto thenValue = generate(expr->thenBody());
