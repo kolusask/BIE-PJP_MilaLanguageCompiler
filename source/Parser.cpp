@@ -190,21 +190,32 @@ std::shared_ptr<ParenthesesExpression> Parser::parse_parentheses() {
 }
 
 ExpressionPointer Parser::parse_binary(int exprPrec, ExpressionPointer left) {;
+    std::shared_ptr<Token> op = nullptr;
+    std::shared_ptr<Expression> right = nullptr;
     // Come here after reading left hand side having operator as last
     while (true) {
         int opPrec = last_token()->op_precedence();
-        if (opPrec < exprPrec)
+        if (opPrec < exprPrec) {
+            if (op && op->type() == TOK_ASSIGN) {
+                auto expr = std::static_pointer_cast<BinaryOperationExpression>(left);
+                if (expr->left()->type() == EXPR_IDENTIFIER) {
+                    auto assignee = std::static_pointer_cast<IdentifierExpression>(expr->left());
+                    return std::make_shared<AssignExpression>(assignee->value(), right, position());
+                }
+                throw Exception(left->position(), "Left operand of assignment must be a variable name");
+            }
             return left;
+        }
 
-        auto op = last_token();
+        op = last_token();
         next_token();
-        auto right = parse_single();
+        right = parse_single();
 
         if (opPrec < last_token()->op_precedence())
             right = parse_binary(opPrec + 1, std::move(right));
 
         left = std::make_shared<BinaryOperationExpression>(std::move(std::static_pointer_cast<OperatorToken>(op)),
-                std::move(left), std::move(right), Syntax::is_bool_operator(op->type()), std::move(position()));
+                std::move(left), right, Syntax::is_bool_operator(op->type()), std::move(position()));
     }
 }
 

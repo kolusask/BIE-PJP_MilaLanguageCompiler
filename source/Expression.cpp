@@ -119,3 +119,7 @@ std::string ForLoopExpression::to_string() const {
 std::string DoubleExpression::to_string() const {
     return std::to_string(m_value);
 }
+
+std::string AssignExpression::to_string() const {
+    return m_name + ":=" + m_value->to_string();
+}

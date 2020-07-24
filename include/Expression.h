@@ -16,6 +16,7 @@
 
 
 enum ExpressionType {
+    EXPR_ASSIGN,
     EXPR_BINARY_OPERATION,
     EXPR_BLOCK,
     EXPR_CALL,
@@ -33,6 +34,7 @@ enum ExpressionType {
 };
 
 typedef std::pair<std::string, TokenType> Variable;
+
 
 // Base class for all expressions in abstract syntax tree
 class Expression : std::enable_shared_from_this<Expression> {
@@ -127,6 +129,7 @@ public:
 private:
     const double m_value;
 };
+
 
 class IdentifierExpression : public Expression {
 public:
@@ -226,6 +229,7 @@ private:
     const bool m_isBoolean;
 };
 
+
 class FunctionExpression : public Expression {
 public:
     FunctionExpression(const std::string name, TokenType type, const std::list<Variable> args,
@@ -265,6 +269,7 @@ private:
     const std::shared_ptr<BlockExpression> m_body;
 };
 
+
 class TopLevelExpression : public Expression {
 public:
     TopLevelExpression(const std::list<std::shared_ptr<FunctionExpression>> functions,
@@ -289,6 +294,7 @@ private:
     std::shared_ptr<VarExpression> m_vars;
     std::shared_ptr<BlockExpression> m_body;
 };
+
 
 class ConditionExpression : public Expression {
 public:
@@ -316,6 +322,7 @@ private:
     const ExpressionPointer m_ifFalse;
 };
 
+
 class WhileLoopExpression : public Expression {
 public:
     WhileLoopExpression(const ExpressionPointer cond, const ExpressionPointer body, const TextPosition tp) :
@@ -332,6 +339,7 @@ private:
     const ExpressionPointer m_condition;
     const ExpressionPointer m_body;
 };
+
 
 class ForLoopExpression : public Expression {
 public:
@@ -355,6 +363,27 @@ public:
     const ExpressionPointer m_finish;
     const bool m_down;
     const ExpressionPointer m_body;
+};
+
+
+class AssignExpression : public Expression {
+public:
+    AssignExpression(const std::string name, const ExpressionPointer value, const TextPosition tp) :
+            Expression(std::move(tp)),
+            m_name(std::move(name)),
+            m_value(std::move(value)) {}
+
+    bool can_be_operand() const override { return false; }
+    ExpressionType type() const override { return EXPR_ASSIGN; }
+
+    std::string to_string() const override;
+
+    std::string name() const { return std::move(m_name); }
+    ExpressionPointer value() const { return std::move(m_value); }
+
+private:
+    const std::string m_name;
+    const ExpressionPointer m_value;
 };
 
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H
