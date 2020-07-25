@@ -8,29 +8,31 @@
 GeneratedCode CodeGenerator::generate(const ExpressionPointer expr) {
     switch(expr->type()) {
         case EXPR_INTEGER:
-            return std::move(gen_integer(std::move(expr)));
+            return std::move(gen_integer(std::move(std::static_pointer_cast<IntegerExpression>(expr))));
         case EXPR_IDENTIFIER:
-            return std::move(gen_identifier(std::move(expr)));
+            return std::move(gen_identifier(std::move(std::static_pointer_cast<IdentifierExpression>(expr))));
         case EXPR_BINARY_OPERATION:
-            return std::move(gen_binary_operation(std::move(expr)));
+            return std::move(gen_binary_operation(std::move(std::static_pointer_cast<BinaryOperationExpression>(expr))));
         case EXPR_CALL:
-            return std::move(gen_call(std::move(expr)));
+            return std::move(gen_call(std::move(std::static_pointer_cast<CallExpression>(expr))));
         case EXPR_FUNCTION:
-            return std::move(gen_function(std::move(expr)));
+            return std::move(gen_function(std::move(std::static_pointer_cast<FunctionExpression>(expr))));
         case EXPR_CONDITION:
-            return std::move(gen_condition(std::move(expr)));
+            return std::move(gen_condition(std::move(std::static_pointer_cast<ConditionExpression>(expr))));
+        case EXPR_ASSIGN:
+            return std::move(gen_assign(std::move(std::static_pointer_cast<AssignExpression>(expr))));
         default:
             throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 }
 
-GeneratedCode CodeGenerator::gen_integer(const ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression> ep) {
     auto expr = std::static_pointer_cast<IntegerExpression>(ep);
 
     return std::move(GeneratedCode(llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()))));
 }
 
-GeneratedCode CodeGenerator::gen_identifier(const ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> ep) {
     auto expr = std::static_pointer_cast<IdentifierExpression>(ep);
 
     auto value = m_variables[expr->value()];
@@ -41,7 +43,7 @@ GeneratedCode CodeGenerator::gen_identifier(const ExpressionPointer ep) {
     return std::move(GeneratedCode(m_builder.CreateLoad(value, expr->value().c_str())));
 }
 
-GeneratedCode CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
     auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
 
     auto left = generate(expr->left());
@@ -60,7 +62,7 @@ GeneratedCode CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
 
 }
 
-GeneratedCode CodeGenerator::gen_call(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
     auto expr = std::static_pointer_cast<CallExpression>(ep);
 
     auto function = m_module->getFunction(expr->name());
@@ -94,7 +96,18 @@ llvm::Type* CodeGenerator::get_type(TokenType type) {
     }
 }
 
-GeneratedCode CodeGenerator::gen_function(ExpressionPointer ep) {
+llvm::Value *CodeGenerator::get_default_value(TokenType type) {
+    switch (type) {
+        case TOK_INTEGER: {
+            static auto intZero = llvm::ConstantInt::get(m_context, llvm::APSInt(0));
+            return intZero;
+        }
+        default:
+            return nullptr;
+    }
+}
+
+GeneratedCode CodeGenerator::gen_function(const std::shared_ptr<FunctionExpression> ep) {
     auto expr = std::static_pointer_cast<FunctionExpression>(ep);
 
     // Prototype
@@ -120,6 +133,7 @@ GeneratedCode CodeGenerator::gen_function(ExpressionPointer ep) {
     }
 
     // TODO add return
+    return nullptr;
 }
 
 llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const std::string &name, llvm::Type *type) {
@@ -127,7 +141,7 @@ llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const s
     return builder.CreateAlloca(type, 0, name.c_str());
 }
 
-GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
     auto condValue = m_builder.CreateFCmpONE(
@@ -158,7 +172,7 @@ GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
     throw Exception(expr->position(), "NOT IMPLEMENTED");
 }
 
-GeneratedCode CodeGenerator::gen_assign(ExpressionPointer ep) {
+GeneratedCode CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> ep) {
     auto expr = std::static_pointer_cast<AssignExpression>(ep);
 
     auto value = generate(expr->value()).value();
@@ -168,5 +182,11 @@ GeneratedCode CodeGenerator::gen_assign(ExpressionPointer ep) {
     m_builder.CreateStore(value, variable);
     return GeneratedCode(value);
 }
+
+
+
+//GeneratedCode CodeGenerator::gen_assign(const std::string &name, ExpressionPointer value) {
+//    return GeneratedCode(__cxx11::list());
+//}
 
 

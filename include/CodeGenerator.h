@@ -21,13 +21,17 @@
 
 class GeneratedCode {
 public:
+    GeneratedCode() = default;
     GeneratedCode(const std::list<llvm::Value*> values) : m_values(std::move(values)) {}
     explicit GeneratedCode(llvm::Value* value) : m_values({value}) {}
 
     llvm::Value* value() const { return *m_values.begin(); }
+    void add(GeneratedCode& other) {
+        m_values.insert(m_values.end(), other.m_values.begin(), other.m_values.end());
+    }
 
 private:
-    const std::list<llvm::Value*> m_values;
+    std::list<llvm::Value*> m_values;
 
 };
 
@@ -36,15 +40,17 @@ public:
     GeneratedCode generate(const ExpressionPointer expr);
 
 private:
-    GeneratedCode gen_integer(const ExpressionPointer ep);
-    GeneratedCode gen_identifier(const ExpressionPointer ep);
-    GeneratedCode gen_binary_operation(const ExpressionPointer ep);
-    GeneratedCode gen_call(const ExpressionPointer ep);
-    GeneratedCode gen_function(const ExpressionPointer ep);
-    GeneratedCode gen_condition(const ExpressionPointer ep);
-    GeneratedCode gen_assign(const ExpressionPointer ep);
+    GeneratedCode gen_integer(const std::shared_ptr<IntegerExpression> ep);
+    GeneratedCode gen_identifier(const std::shared_ptr<IdentifierExpression> ep);
+    GeneratedCode gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep);
+    GeneratedCode gen_call(const std::shared_ptr<CallExpression> ep);
+    GeneratedCode gen_function(const std::shared_ptr<FunctionExpression> ep);
+    GeneratedCode gen_condition(const std::shared_ptr<ConditionExpression> ep);
+    GeneratedCode gen_assign(const std::shared_ptr<AssignExpression> ep);
+    GeneratedCode gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
 
     llvm::Type* get_type(TokenType type);
+    llvm::Value* get_default_value(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
 
     llvm::LLVMContext m_context;

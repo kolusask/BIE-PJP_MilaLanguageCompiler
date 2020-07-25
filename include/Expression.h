@@ -95,6 +95,8 @@ public:
     bool can_be_operand() const override { return false; }
     ExpressionType type() const override { return EXPR_VAR; }
 
+    std::list<Variable> vars() const { return std::move(m_vars); }
+
     std::string to_string() const override;
 
 private:
