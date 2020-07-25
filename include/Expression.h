@@ -247,11 +247,18 @@ public:
     ExpressionType type() const override { return EXPR_FUNCTION; }
     std::string name() const { return m_name; }
 
-    std::vector<TokenType> types() const {
+    std::vector<TokenType> arg_types() const {
         std::vector<TokenType> result;
         for (auto& arg : m_arguments)
             result.push_back(arg.second);
-        return result;
+        return std::move(result);
+    }
+
+    std::vector<std::string> arg_names() const {
+        std::vector<std::string> result;
+        for (auto& arg : m_arguments)
+            result.push_back(arg.first);
+        return std::move(result);
     }
 
     TokenType return_type() const { return m_type; }
@@ -263,7 +270,7 @@ public:
 private:
     const std::string m_name;
     const TokenType m_type;
-    const std::list<std::pair<std::string, TokenType>> m_arguments;
+    const std::list<Variable> m_arguments;
     const std::shared_ptr<ConstExpression> m_consts;
     const std::shared_ptr<VarExpression> m_vars;
     const std::shared_ptr<BlockExpression> m_body;

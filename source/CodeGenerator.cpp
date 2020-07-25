@@ -36,7 +36,7 @@ GeneratedCode CodeGenerator::gen_identifier(const ExpressionPointer ep) {
     auto value = m_variables[expr->value()];
     if (!value)
         throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
-    return std::move(GeneratedCode(value));
+    return std::move(GeneratedCode(m_builder.CreateLoad(value, expr->value().c_str())));
 }
 
 GeneratedCode CodeGenerator::gen_binary_operation(ExpressionPointer ep) {
@@ -95,23 +95,34 @@ llvm::Type* CodeGenerator::get_type(TokenType type) {
 GeneratedCode CodeGenerator::gen_function(ExpressionPointer ep) {
     auto expr = std::static_pointer_cast<FunctionExpression>(ep);
 
-    std::vector<llvm::Type*> types;
-    for (auto tt : expr->types())
-        types.push_back(get_type(tt));
-    auto retType = llvm::FunctionType::get(get_type(expr->return_type()), types, false);
+    // Prototype
+    std::vector<llvm::Type*> argTypes;
+    for (auto& tt : expr->arg_types())
+        argTypes.push_back(get_type(tt));
+    auto retType = get_type(expr->return_type());
+    auto functionType = llvm::FunctionType::get(retType, argTypes, false);
     auto function = llvm::Function::Create(
-            retType, llvm::Function::ExternalLinkage, expr->name(), m_module.get());
+            functionType, llvm::Function::ExternalLinkage, expr->name(), m_module.get());
+    auto argNames = expr->arg_names();
+    size_t i = 0;
+    for (auto& arg : function->args())
+        arg.setName(argNames[i++]);
 
+    // Body
     auto block = llvm::BasicBlock::Create(m_context, "entry", function);
     m_builder.SetInsertPoint(block);
-    for (auto& arg : function->args())
-        m_variables[arg.getName()] = &arg;
+    for (auto& arg : function->args()) {
+        auto alloca = create_alloca(function, arg.getName(), arg.getType());
+        m_builder.CreateStore(&arg, alloca);
+        m_variables[std::string(arg.getName())] = alloca;
+    }
 
-    auto retVal = generate(expr->body());
-    m_builder.CreateRet(retVal.value());
-    llvm::verifyFunction(*function);
+    // TODO add return
+}
 
-    return std::move(GeneratedCode(function));
+llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const std::string &name, llvm::Type *type) {
+    llvm::IRBuilder<> builder(&function->getEntryBlock(), function->getEntryBlock().begin());
+    return builder.CreateAlloca(type, 0, name.c_str());
 }
 
 GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
@@ -144,4 +155,5 @@ GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
     //auto phiNode = m_builder.CreatePHI(llvm::)
     throw Exception(expr->position(), "NOT IMPLEMENTED");
 }
+
 
