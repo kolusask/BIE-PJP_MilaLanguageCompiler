@@ -37,7 +37,11 @@ private:
 
 class CodeGenerator {
 public:
+    CodeGenerator() :
+            m_builder(std::make_shared<llvm::IRBuilder<>>(m_context)),
+            m_module(std::make_unique<llvm::Module>("jit", m_context)){}
     GeneratedCode generate(const ExpressionPointer expr);
+    void write_output(const char* fileName);
 
 private:
     GeneratedCode gen_integer(const std::shared_ptr<IntegerExpression> ep);
@@ -54,7 +58,7 @@ private:
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
 
     llvm::LLVMContext m_context;
-    llvm::IRBuilder<> m_builder;
+    std::shared_ptr<llvm::IRBuilder<>> m_builder;
     std::unique_ptr<llvm::Module> m_module;
     std::map<std::string, llvm::AllocaInst *> m_variables;
     std::map<std::string, llvm::AllocaInst *> m_constants;

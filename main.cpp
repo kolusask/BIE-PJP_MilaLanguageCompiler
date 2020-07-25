@@ -1,3 +1,4 @@
+#include "include/CodeGenerator.h"
 #include "include/Exception.h"
 #include "include/Parser.h"
 
@@ -17,22 +18,27 @@ int main(int argc, char* args[]) {
     } else {
         try {
             parser.parse();
+            const char* outFile = argc >= 3 ? args[2] : "output.o";
+            CodeGenerator generator;
+            generator.write_output(outFile);
+
         } catch (Exception& e) {
-            auto pos = e.position();
-            std::cerr << "LINE " << pos.line << "; COLUMN " << pos.column << ':' << std::endl;
-            file.seekg(0, std::ios::beg);
-            std::string line;
-            for (int i = 0; i < pos.line; i++)
-                std::getline(file, line);
-            std::cerr << line << std::endl;
+            if (e.has_position()) {
+                auto pos = e.position();
+                std::cerr << "LINE " << pos.line << "; COLUMN " << pos.column << ':' << std::endl;
+                file.seekg(0, std::ios::beg);
+                std::string line;
+                for (int i = 0; i < pos.line; i++)
+                    std::getline(file, line);
+                std::cerr << line << std::endl;
 
-            for (int i = 0; i < pos.column - 1; i++)
-                std::cerr << '~';
-            std::cerr << '^';
-            for (int i = pos.column; i < line.length(); i++)
-                std::cerr << '~';
-            std::cerr << std::endl;
-
+                for (int i = 0; i < pos.column - 1; i++)
+                    std::cerr << '~';
+                std::cerr << '^';
+                for (int i = pos.column; i < line.length(); i++)
+                    std::cerr << '~';
+                std::cerr << std::endl;
+            }
             std::cerr << "ERROR:\t" << e.message() << std::endl;
             return 2;
         }

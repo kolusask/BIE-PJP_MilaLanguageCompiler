@@ -5,6 +5,17 @@
 #include "../include/CodeGenerator.h"
 #include "../include/Exception.h"
 
+#include "llvm/IR/LegacyPassManager.h"
+
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+
 GeneratedCode CodeGenerator::generate(const ExpressionPointer expr) {
     switch(expr->type()) {
         case EXPR_INTEGER:
@@ -40,7 +51,7 @@ GeneratedCode CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpr
         value = m_constants[expr->value()];
     if (!value)
         throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
-    return std::move(GeneratedCode(m_builder.CreateLoad(value, expr->value().c_str())));
+    return std::move(GeneratedCode(m_builder->CreateLoad(value, expr->value().c_str())));
 }
 
 GeneratedCode CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
@@ -50,13 +61,13 @@ GeneratedCode CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOp
     auto right = generate(expr->right());
     switch(expr->op()->type()) {
         case TOK_PLUS:
-            return std::move(GeneratedCode(m_builder.CreateFAdd(left.value(), right.value(), "addtmp")));
+            return std::move(GeneratedCode(m_builder->CreateFAdd(left.value(), right.value(), "addtmp")));
         case TOK_MINUS:
-            return std::move(GeneratedCode(m_builder.CreateFSub(left.value(), right.value(), "subtmp")));
+            return std::move(GeneratedCode(m_builder->CreateFSub(left.value(), right.value(), "subtmp")));
         case TOK_MULTIPLY:
-            return std::move(GeneratedCode(m_builder.CreateFMul(left.value(), right.value(), "multmp")));
+            return std::move(GeneratedCode(m_builder->CreateFMul(left.value(), right.value(), "multmp")));
         case TOK_LESS:
-            return std::move(GeneratedCode(m_builder.CreateFCmpULT(left.value(), right.value(), "cmptmp")));
+            return std::move(GeneratedCode(m_builder->CreateFCmpULT(left.value(), right.value(), "cmptmp")));
         default: throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 
@@ -84,7 +95,7 @@ GeneratedCode CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) 
     for (const auto& arg : expr->args())
         args.push_back(generate(arg).value());
 
-    return std::move(GeneratedCode(m_builder.CreateCall(function, args, "calltmp")));
+    return std::move(GeneratedCode(m_builder->CreateCall(function, args, "calltmp")));
 }
 
 llvm::Type* CodeGenerator::get_type(TokenType type) {
@@ -125,15 +136,15 @@ GeneratedCode CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressi
 
     // Body
     auto block = llvm::BasicBlock::Create(m_context, "entry", function);
-    m_builder.SetInsertPoint(block);
+    m_builder->SetInsertPoint(block);
     for (auto& arg : function->args()) {
         auto alloca = create_alloca(function, arg.getName(), arg.getType());
-        m_builder.CreateStore(&arg, alloca);
+        m_builder->CreateStore(&arg, alloca);
         m_variables[std::string(arg.getName())] = alloca;
     }
 
     // TODO add return
-    return nullptr;
+    return GeneratedCode(nullptr);
 }
 
 llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const std::string &name, llvm::Type *type) {
@@ -144,32 +155,31 @@ llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const s
 GeneratedCode CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
-    auto condValue = m_builder.CreateFCmpONE(
+    auto condValue = m_builder->CreateFCmpONE(
             generate(expr->condition()).value(), llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
 
-    auto function = m_builder.GetInsertBlock()->getParent();
+    auto function = m_builder->GetInsertBlock()->getParent();
     // blocks
     auto thenBlock = llvm::BasicBlock::Create(m_context, "then", function);
     auto elseBlock = llvm::BasicBlock::Create(m_context, "else");
     auto mergeBlock = llvm::BasicBlock::Create(m_context, "ifcont");
     // split
-    m_builder.CreateCondBr(condValue, thenBlock, elseBlock);
+    m_builder->CreateCondBr(condValue, thenBlock, elseBlock);
     // then
-    m_builder.SetInsertPoint(thenBlock);
+    m_builder->SetInsertPoint(thenBlock);
     auto thenValue = generate(expr->thenBody());
-    m_builder.CreateBr(mergeBlock);
-    thenBlock = m_builder.GetInsertBlock();
+    m_builder->CreateBr(mergeBlock);
+    thenBlock = m_builder->GetInsertBlock();
     // else
     function->getBasicBlockList().push_back(elseBlock);
-    m_builder.SetInsertPoint(elseBlock);
+    m_builder->SetInsertPoint(elseBlock);
     auto elseValue = generate(expr->elseBody());
-    m_builder.CreateBr(mergeBlock);
-    elseBlock = m_builder.GetInsertBlock();
+    m_builder->CreateBr(mergeBlock);
+    elseBlock = m_builder->GetInsertBlock();
     // merge
     function->getBasicBlockList().push_back(mergeBlock);
-    m_builder.SetInsertPoint(mergeBlock);
-    //auto phiNode = m_builder.CreatePHI(llvm::)
-    throw Exception(expr->position(), "NOT IMPLEMENTED");
+    m_builder->SetInsertPoint(mergeBlock);
+    //m_builder->
 }
 
 GeneratedCode CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> ep) {
@@ -179,8 +189,52 @@ GeneratedCode CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> 
     auto variable = m_variables[expr->name()];
     if (!variable)
         throw Exception(expr->position(), "Unknown identifier: '" + expr->name() + '\'');
-    m_builder.CreateStore(value, variable);
+    m_builder->CreateStore(value, variable);
     return GeneratedCode(value);
+}
+
+void CodeGenerator::write_output(const char *fileName) {
+    // Initialize the target registry etc
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+    auto targetTriple = llvm::sys::getDefaultTargetTriple();
+    m_module->setTargetTriple(targetTriple);
+
+    std::string error;
+    auto target = llvm::TargetRegistry::lookupTarget(targetTriple, error);
+
+    if (!target)
+        throw Exception(error);
+
+    auto cpu = "generic";
+    auto features = "";
+
+    llvm::TargetOptions opt;
+    auto relocModel = llvm::Optional<llvm::Reloc::Model>();
+    auto targetMachine = target->createTargetMachine(targetTriple, cpu, features, opt, relocModel);
+
+    m_module->setDataLayout(targetMachine->createDataLayout());
+
+    std::error_code errorCode;
+    llvm::raw_fd_ostream dest(fileName, errorCode, llvm::sys::fs::OF_None);
+
+    if (errorCode)
+        throw Exception(errorCode.message());
+
+    llvm::legacy::PassManager pass;
+
+    auto fileType = llvm::CGFT_ObjectFile;
+
+    if (targetMachine->addPassesToEmitFile(pass, dest, nullptr, fileType))
+        throw Exception("I don't want to do that");
+
+    pass.run(*m_module);
+
+    dest.flush();
 }
 
 

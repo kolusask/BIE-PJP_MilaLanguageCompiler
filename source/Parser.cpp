@@ -379,3 +379,4 @@ std::shared_ptr<BinaryOperationExpression> Parser::parse_minus() {
     auto expr = parse_expression();
     return std::make_shared<BinaryOperationExpression>(multiply, minusOne, expr, false, std::move(position()));
 }
+

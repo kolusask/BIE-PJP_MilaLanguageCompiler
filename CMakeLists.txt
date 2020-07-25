@@ -2,11 +2,29 @@ cmake_minimum_required(VERSION 3.16)
 project(BIE_PJP_MilaLanguageCompiler)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(LLVM REQUIRED CONFIG)
-include_directories(${LLVM_INCLUDE_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER clang++)
 
+add_definitions("-fexceptions")
+#append(CMAKE_CXX_FLAGS "-fexceptions")
+
+
+#// target i686-pc-windows-gnu for 32bit
+execute_process(COMMAND llvm-config --libs OUTPUT_VARIABLE LIBS)
+execute_process(COMMAND llvm-config --system-libs OUTPUT_VARIABLE SYS_LIBS)
+execute_process(COMMAND llvm-config --ldflags OUTPUT_VARIABLE LDF)
+#message(STATUS "Found LLVM" ${LIBS})
+
+string(STRIP ${LIBS} LIBS)
+string(STRIP ${SYS_LIBS} SYS_LIBS)
+string(STRIP ${LDF} LDF)
+
+link_libraries(${LIBS} ${SYS_LIBS} ${LDF})
+
+execute_process(COMMAND llvm-config --cxxflags OUTPUT_VARIABLE CMAKE_CXX_FLAGS)
+string(STRIP ${CMAKE_CXX_FLAGS} CMAKE_CXX_FLAGS)
 
 add_executable(BIE_PJP_MilaLanguageCompiler
         main.cpp
@@ -20,8 +38,17 @@ add_executable(BIE_PJP_MilaLanguageCompiler
         source/Syntax.cpp
         source/Token.cpp
         source/Expression.cpp
-        include/Expression.h source/CodeGenerator.cpp include/CodeGenerator.h include/TextPosition.h)
+        include/Expression.h
+        source/CodeGenerator.cpp
+        include/CodeGenerator.h
+        include/TextPosition.h)
 
-llvm_map_components_to_libnames(llvm_libs support core irreader)
+
+
+
+#llvm_map_components_to_libnames(llvm_libs support core irreader executionEngine)
 
 target_link_libraries(BIE_PJP_MilaLanguageCompiler ${llvm_libs})
+
+
+
