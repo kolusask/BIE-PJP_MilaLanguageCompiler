@@ -42,6 +42,7 @@ private:
     GeneratedCode gen_call(const ExpressionPointer ep);
     GeneratedCode gen_function(const ExpressionPointer ep);
     GeneratedCode gen_condition(const ExpressionPointer ep);
+    GeneratedCode gen_assign(const ExpressionPointer ep);
 
     llvm::Type* get_type(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
@@ -50,6 +51,7 @@ private:
     llvm::IRBuilder<> m_builder;
     std::unique_ptr<llvm::Module> m_module;
     std::map<std::string, llvm::AllocaInst *> m_variables;
+    std::map<std::string, llvm::AllocaInst *> m_constants;
 };
 
 

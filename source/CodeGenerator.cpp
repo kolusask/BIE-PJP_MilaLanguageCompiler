@@ -35,6 +35,8 @@ GeneratedCode CodeGenerator::gen_identifier(const ExpressionPointer ep) {
 
     auto value = m_variables[expr->value()];
     if (!value)
+        value = m_constants[expr->value()];
+    if (!value)
         throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
     return std::move(GeneratedCode(m_builder.CreateLoad(value, expr->value().c_str())));
 }
@@ -154,6 +156,17 @@ GeneratedCode CodeGenerator::gen_condition(ExpressionPointer ep) {
     m_builder.SetInsertPoint(mergeBlock);
     //auto phiNode = m_builder.CreatePHI(llvm::)
     throw Exception(expr->position(), "NOT IMPLEMENTED");
+}
+
+GeneratedCode CodeGenerator::gen_assign(ExpressionPointer ep) {
+    auto expr = std::static_pointer_cast<AssignExpression>(ep);
+
+    auto value = generate(expr->value()).value();
+    auto variable = m_variables[expr->name()];
+    if (!variable)
+        throw Exception(expr->position(), "Unknown identifier: '" + expr->name() + '\'');
+    m_builder.CreateStore(value, variable);
+    return GeneratedCode(value);
 }
 
 
