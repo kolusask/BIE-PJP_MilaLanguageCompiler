@@ -7,20 +7,26 @@
 
 #include "Token.h"
 
+#include <list>
 #include <map>
-#include <set>
 
 
 class Syntax {
 public:
-    static TokenType check_character(const char op);
+    static TokenType check_character(const char ch);
     static TokenType check_keyword(const std::string& word);
+    static TokenType check_operator(const std::string& op);
+    static bool is_bool_operator(const TokenType op);
+    static bool is_datatype(TokenType dt);
     static bool is_delimiter(const char del);
+
 private:
-    static const std::set<char> s_Delimiters;
-    static const std::map<std::string, TokenType> s_KeyWords;
-    static const std::map<char, TokenType> s_Characters;
-    static const std::map<TokenType, std::string> s_SimpleTokens;
+    struct Operator {
+        const TokenType type;
+        const std::string name;
+        const bool is_boolean;
+    };
+    static const std::list<Operator> s_operators;
 };
 
 #endif //MILALANGUAGECOMPILER_SYNTAX_H

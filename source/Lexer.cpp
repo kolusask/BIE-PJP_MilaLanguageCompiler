@@ -11,36 +11,49 @@
 #include <memory>
 
 Lexer::Lexer(std::istream &stream) :
-    m_Stream(stream),
-    m_Char(stream.get()),
-    m_Position{1, 1},
-    m_PrevPosition{1, 1}
+    m_stream(stream),
+    m_char(stream.get()),
+    m_position{1, 1},
+    m_prevPosition{1, 1},
+    m_lastToken(nullptr)
     {}
 
 int Lexer::read_char() {
-    m_Char = m_Stream.get();
-    if (m_Stream.eof())
-        m_Char = std::istream::eofbit;
-    else if (m_Char == '\n') {
-        ++m_Position.line;
-        m_Position.column = 0;
+    m_char = m_stream.get();
+    if (m_stream.eof())
+        m_char = std::istream::eofbit;
+    else if (m_char == '\n') {
+        ++m_position.line;
+        m_position.column = 0;
     } else
-        ++m_Position.column;
-    return m_Char;
+        ++m_position.column;
+    return m_char;
 }
 
-int Lexer::read_number() {
-    int number = m_Char - '0';
-    while (std::isdigit(read_char()))
-        number = number * 10 + (m_Char - '0');
-    return number;
+double Lexer::read_number(bool& isDouble) {
+    std::string number(1, m_char);
+    while (std::isdigit(read_char()) || (!isDouble && (isDouble = (m_char == '.'))))
+        number += m_char;
+    return std::stod(number);
 }
 
 std::string Lexer::read_identifier() {
-    std::string identifier(1, m_Char);
-    while (std::isalpha(read_char()))
-        identifier += m_Char;
+    std::string identifier(1, m_char);
+    while (std::isalpha(read_char()) || std::isdigit(m_char))
+        identifier += m_char;
     return std::move(identifier);
+}
+
+std::string Lexer::read_operator() {
+    std::string op(1, m_char);
+    while (is_in_operator(read_char())) {
+        op += m_char;
+        if (m_char == '=') {
+            read_char();
+            break;
+        }
+    }
+    return std::move(op);
 }
 
 // Create a specific token as a pointer to Token base
@@ -50,34 +63,72 @@ std::shared_ptr<Token> as_token(const A arg) {
 }
 
 std::shared_ptr<Token> Lexer::next_token() {
-    while (Syntax::is_delimiter(m_Char))
+    while (Syntax::is_delimiter(m_char))
         read_char();
-    m_PrevPosition = m_Position;
-    switch (m_Char) {
+    m_prevPosition = m_position;
+
+    switch (m_char) {
         case std::istream::eofbit:
             return as_token<SimpleToken, TokenType>(TOK_EOF);
         // number
-        case '0' ... '1':
-            return as_token<TokInteger, int>(read_number());
-        // identifier
+        case '0' ... '9': {
+            bool isDouble = false;
+            double value = read_number(isDouble);
+            if (isDouble)
+                return as_token<DoubleToken, double>(value);
+            return as_token<IntegerToken, int>(int(value));
+        }
+        // multi character string
         case 'a' ... 'z':
         case 'A' ... 'Z': {
             const std::string &&identifier = read_identifier();
-            const TokenType type = Syntax::check_keyword(identifier);
-            if (!Syntax::check_keyword(identifier))
-                return as_token<IdentifierToken, std::string>(identifier);
-            return as_token<SimpleToken, TokenType>(type);
+            TokenType type;
+            if ((type = Syntax::check_keyword(identifier)))
+                return as_token<SimpleToken, TokenType>(type);
+            if ((type = Syntax::check_operator(identifier)))
+                return as_token<OperatorToken, TokenType>(type);
+            return as_token<IdentifierToken, std::string>(identifier);
+
         }
-        // single char
+        // operator
+        case '<':
+        case '=':
+        case '>':
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case ':': {
+            const std::string &&op = read_operator();
+            TokenType type;
+            if ((type = Syntax::check_operator(op)))
+                return as_token<OperatorToken, TokenType>(type);
+            if (op.length() == 1 && (type = Syntax::check_character(op[0])))
+                return as_token<SimpleToken, TokenType>(type);
+            throw InvalidSymbolException(m_position, m_char);
+        }
+        //single char
         default: {
-            const TokenType type = Syntax::check_character(m_Char);
+            const TokenType type = Syntax::check_character(m_char);
             if (type) {
                 read_char();
                 return as_token<SimpleToken, TokenType>(type);
             }
-            throw InvalidSymbolException(m_Position, m_Char);
+            throw InvalidSymbolException(m_position, m_char);
         }
     }
 }
 
-const TextPosition& Lexer::position() { return m_PrevPosition; }
+const TextPosition& Lexer::position() { return m_prevPosition; }
+
+bool Lexer::is_in_operator(const char ch) const {
+    static const std::set<char> op_set = {'+',
+                                          '-',
+                                          '*',
+                                          '/',
+                                          '<',
+                                          '=',
+                                          '>',
+                                          ':'};
+    return op_set.count(ch);
+}
