@@ -16,7 +16,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
-GeneratedCode CodeGenerator::generate(const ExpressionPointer expr) {
+llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
     switch(expr->type()) {
         case EXPR_INTEGER:
             return std::move(gen_integer(std::move(std::static_pointer_cast<IntegerExpression>(expr))));
@@ -37,13 +37,13 @@ GeneratedCode CodeGenerator::generate(const ExpressionPointer expr) {
     }
 }
 
-GeneratedCode CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression> ep) {
+llvm::Value* CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression> ep) {
     auto expr = std::static_pointer_cast<IntegerExpression>(ep);
 
-    return std::move(GeneratedCode(llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()))));
+    return llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
 }
 
-GeneratedCode CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> ep) {
+llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> ep) {
     auto expr = std::static_pointer_cast<IdentifierExpression>(ep);
 
     auto value = m_variables[expr->value()];
@@ -51,29 +51,29 @@ GeneratedCode CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpr
         value = m_constants[expr->value()];
     if (!value)
         throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
-    return std::move(GeneratedCode(m_builder->CreateLoad(value, expr->value().c_str())));
+    return m_builder->CreateLoad(value, expr->value().c_str());
 }
 
-GeneratedCode CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
+llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
     auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
 
     auto left = generate(expr->left());
     auto right = generate(expr->right());
     switch(expr->op()->type()) {
         case TOK_PLUS:
-            return std::move(GeneratedCode(m_builder->CreateFAdd(left.value(), right.value(), "addtmp")));
+            return m_builder->CreateFAdd(left, right, "addtmp");
         case TOK_MINUS:
-            return std::move(GeneratedCode(m_builder->CreateFSub(left.value(), right.value(), "subtmp")));
+            return m_builder->CreateFSub(left, right, "subtmp");
         case TOK_MULTIPLY:
-            return std::move(GeneratedCode(m_builder->CreateFMul(left.value(), right.value(), "multmp")));
+            return m_builder->CreateFMul(left, right, "multmp");
         case TOK_LESS:
-            return std::move(GeneratedCode(m_builder->CreateFCmpULT(left.value(), right.value(), "cmptmp")));
+            return m_builder->CreateFCmpULT(left, right, "cmptmp");
         default: throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 
 }
 
-GeneratedCode CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
+llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
     auto expr = std::static_pointer_cast<CallExpression>(ep);
 
     auto function = m_module->getFunction(expr->name());
@@ -93,9 +93,9 @@ GeneratedCode CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) 
 
     std::vector<llvm::Value*> args;
     for (const auto& arg : expr->args())
-        args.push_back(generate(arg).value());
+        args.push_back(generate(arg));
 
-    return std::move(GeneratedCode(m_builder->CreateCall(function, args, "calltmp")));
+    return m_builder->CreateCall(function, args, "calltmp");
 }
 
 llvm::Type* CodeGenerator::get_type(TokenType type) {
@@ -118,7 +118,7 @@ llvm::Value *CodeGenerator::get_default_value(TokenType type) {
     }
 }
 
-GeneratedCode CodeGenerator::gen_function(const std::shared_ptr<FunctionExpression> ep) {
+llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpression> ep) {
     auto expr = std::static_pointer_cast<FunctionExpression>(ep);
 
     // Prototype
@@ -144,7 +144,7 @@ GeneratedCode CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressi
     }
 
     // TODO add return
-    return GeneratedCode(nullptr);
+    return nullptr;
 }
 
 llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const std::string &name, llvm::Type *type) {
@@ -152,11 +152,11 @@ llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const s
     return builder.CreateAlloca(type, 0, name.c_str());
 }
 
-GeneratedCode CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep) {
+llvm::Value* CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
     auto condValue = m_builder->CreateFCmpONE(
-            generate(expr->condition()).value(), llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
+            generate(expr->condition()), llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
 
     auto function = m_builder->GetInsertBlock()->getParent();
     // blocks
@@ -182,15 +182,15 @@ GeneratedCode CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpres
     //m_builder->
 }
 
-GeneratedCode CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> ep) {
+llvm::Value* CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> ep) {
     auto expr = std::static_pointer_cast<AssignExpression>(ep);
 
-    auto value = generate(expr->value()).value();
+    auto value = generate(expr->value());
     auto variable = m_variables[expr->name()];
     if (!variable)
         throw Exception(expr->position(), "Unknown identifier: '" + expr->name() + '\'');
     m_builder->CreateStore(value, variable);
-    return GeneratedCode(value);
+    return value;
 }
 
 void CodeGenerator::write_output(const char *fileName) {
@@ -243,8 +243,8 @@ void CodeGenerator::print() const {
 
 
 
-//GeneratedCode CodeGenerator::gen_assign(const std::string &name, ExpressionPointer value) {
-//    return GeneratedCode(__cxx11::list());
+//llvm::Value* CodeGenerator::gen_assign(const std::string &name, ExpressionPointer value) {
+//    return llvm::Value*(__cxx11::list());
 //}
 
 
