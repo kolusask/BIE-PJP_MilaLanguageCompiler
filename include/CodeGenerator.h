@@ -42,6 +42,7 @@ public:
             m_module(std::make_unique<llvm::Module>("jit", m_context)){}
     GeneratedCode generate(const ExpressionPointer expr);
     void write_output(const char* fileName);
+    void print() const;
 
 private:
     GeneratedCode gen_integer(const std::shared_ptr<IntegerExpression> ep);

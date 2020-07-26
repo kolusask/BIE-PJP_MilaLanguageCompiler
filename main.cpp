@@ -20,7 +20,9 @@ int main(int argc, char* args[]) {
             parser.parse();
             const char* outFile = argc >= 3 ? args[2] : "output.o";
             CodeGenerator generator;
+            generator.print();
             generator.write_output(outFile);
+
 
         } catch (Exception& e) {
             if (e.has_position()) {
@@ -39,7 +41,7 @@ int main(int argc, char* args[]) {
                     std::cerr << '~';
                 std::cerr << std::endl;
             }
-            std::cerr << "ERROR:\t" << e.message() << std::endl;
+            //std::cerr << "ERROR:\t" << e.message() << std::endl;
             return 2;
         }
     }

@@ -237,6 +237,10 @@ void CodeGenerator::write_output(const char *fileName) {
     dest.flush();
 }
 
+void CodeGenerator::print() const {
+    m_module->print(llvm::errs(), nullptr);
+}
+
 
 
 //GeneratedCode CodeGenerator::gen_assign(const std::string &name, ExpressionPointer value) {
