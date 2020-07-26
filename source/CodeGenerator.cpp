@@ -16,6 +16,8 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
+//#include <cstdlib>
+
 llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
     switch(expr->type()) {
         case EXPR_INTEGER:
@@ -42,7 +44,7 @@ llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
 llvm::Value* CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression> ep) {
     auto expr = std::static_pointer_cast<IntegerExpression>(ep);
 
-    return llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
+    return llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), expr->value());// llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
 }
 
 llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> ep) {
@@ -164,7 +166,7 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     m_variables = oldVars;
     m_constants = oldConsts;
 
-    return nullptr;
+    return function;
 }
 
 llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const std::string &name, llvm::Type *type) {
@@ -213,6 +215,42 @@ llvm::Value* CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> e
     return value;
 }
 
+
+void CodeGenerator::print() const {
+    m_module->print(llvm::errs(), nullptr);
+}
+
+llvm::Value *CodeGenerator::generate_code() {
+    auto fType = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context), {}, false);
+    auto function = llvm::Function::Create(fType, llvm::Function::ExternalLinkage, "main", m_module.get());
+    llvm::BasicBlock* block = llvm::BasicBlock::Create(m_context, "start", function);
+    m_builder->SetInsertPoint(block);
+    for (auto& c : m_tree->consts()) {
+        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt16Ty(m_context));
+        m_builder->CreateStore(generate(c.second), m_constants[c.first]);
+    }
+    for (auto& v : m_tree->vars())
+        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt16Ty(m_context));
+    generate(m_tree->body());
+    m_builder->CreateRet(nullptr);
+    return function;
+}
+
+llvm::Value *CodeGenerator::gen_block(std::shared_ptr<BlockExpression> expr) {
+//    auto block = llvm::BasicBlock::Create(m_context, "entry", m_builder->GetInsertBlock()->getParent());
+//    m_builder->SetInsertPoint(block);
+    for (auto& e : expr->body())
+        generate(e);
+    return nullptr;
+}
+
+
+
+//llvm::Value* CodeGenerator::gen_assign(const std::string &name, ExpressionPointer value) {
+//    return llvm::Value*(__cxx11::list());
+//}
+
+
 void CodeGenerator::write_output(const char *fileName) {
     // Initialize the target registry etc
     llvm::InitializeAllTargetInfos();
@@ -255,38 +293,6 @@ void CodeGenerator::write_output(const char *fileName) {
     pass.run(*m_module);
 
     dest.flush();
+
+    std::system((std::string("clang ") + fileName + " -o " + fileName + ".o").c_str());
 }
-
-void CodeGenerator::print() const {
-    m_module->print(llvm::errs(), nullptr);
-}
-
-llvm::Value *CodeGenerator::generate_code() {
-    llvm::BasicBlock* block = llvm::BasicBlock::Create(m_context);
-    m_builder->SetInsertPoint(block);
-    auto function = m_builder->GetInsertBlock()->getParent();
-    for (auto& c : m_tree->consts()) {
-        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt16Ty(m_context));
-        m_builder->CreateStore(generate(c.second), m_constants[c.first]);
-    }
-    for (auto& v : m_tree->vars())
-        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt16Ty(m_context));
-    generate(m_tree->body());
-    return function;
-}
-
-llvm::Value *CodeGenerator::gen_block(std::shared_ptr<BlockExpression> expr) {
-    auto block = llvm::BasicBlock::Create(m_context, "entry", m_builder->GetInsertBlock()->getParent());
-    m_builder->SetInsertPoint(block);
-    for (auto& e : expr->body())
-        generate(e);
-    return block;
-}
-
-
-
-//llvm::Value* CodeGenerator::gen_assign(const std::string &name, ExpressionPointer value) {
-//    return llvm::Value*(__cxx11::list());
-//}
-
-

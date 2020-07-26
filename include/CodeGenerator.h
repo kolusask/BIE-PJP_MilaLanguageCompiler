@@ -24,7 +24,25 @@ public:
     CodeGenerator(std::shared_ptr<TopLevelExpression> tree) :
             m_builder(std::make_shared<llvm::IRBuilder<>>(m_context)),
             m_module(std::make_unique<llvm::Module>("jit", m_context)),
-            m_tree(std::move(tree)) {}
+            m_tree(std::move(tree)) {
+        // printf
+        auto printfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+                                                  {llvm::Type::getInt8PtrTy(m_context)}, true);
+        auto printfFun = llvm::Function::Create(printfType, llvm::Function::ExternalLinkage,
+                "printf", m_module.get());
+
+        // writeln(int)
+        auto writelnType = llvm::FunctionType::get(llvm::Type::getInt16Ty(m_context),
+                {llvm::Type::getInt16Ty(m_context)}, false);
+        auto writelnFun = llvm::Function::Create(writelnType, llvm::Function::ExternalLinkage,
+                "writeln", m_module.get());
+        auto wlnBlock = llvm::BasicBlock::Create(m_context, "start", writelnFun);
+        m_builder->SetInsertPoint(wlnBlock);
+        llvm::Value *formatStr =  m_builder->CreateGlobalStringPtr("%d\n");
+        m_builder->CreateCall(printfType, printfFun, {formatStr, writelnFun->getArg(0)});
+        m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), 0));
+
+    }
     llvm::Value* generate(const ExpressionPointer expr);
     llvm::Value* generate_code();
     void write_output(const char* fileName);
