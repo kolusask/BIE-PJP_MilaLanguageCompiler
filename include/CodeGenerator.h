@@ -21,15 +21,17 @@
 
 class CodeGenerator {
 public:
-    CodeGenerator() :
+    CodeGenerator(std::shared_ptr<TopLevelExpression> tree) :
             m_builder(std::make_shared<llvm::IRBuilder<>>(m_context)),
-            m_module(std::make_unique<llvm::Module>("jit", m_context)){}
+            m_module(std::make_unique<llvm::Module>("jit", m_context)),
+            m_tree(std::move(tree)) {}
     llvm::Value* generate(const ExpressionPointer expr);
+    llvm::Value* generate_code();
     void write_output(const char* fileName);
     void print() const;
 
 private:
-
+    llvm::Value* gen_block(const std::shared_ptr<BlockExpression> expr);
     llvm::Value* gen_integer(const std::shared_ptr<IntegerExpression> ep);
     llvm::Value* gen_identifier(const std::shared_ptr<IdentifierExpression> ep);
     llvm::Value* gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep);
@@ -48,6 +50,7 @@ private:
     std::unique_ptr<llvm::Module> m_module;
     std::map<std::string, llvm::AllocaInst *> m_variables;
     std::map<std::string, llvm::AllocaInst *> m_constants;
+    std::shared_ptr<TopLevelExpression> m_tree;
 };
 
 

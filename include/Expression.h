@@ -74,6 +74,7 @@ public:
 
     std::string to_string() const override;
 
+    std::list<std::pair<std::string, ExpressionPointer>> consts() const { return std::move(m_consts); }
 
 private:
     std::list<std::pair<std::string, ExpressionPointer>> m_consts;
@@ -171,6 +172,26 @@ private:
     const std::list<ExpressionPointer> m_arguments;
 };
 
+class AssignExpression : public Expression {
+public:
+    AssignExpression(const std::string name, const ExpressionPointer value, const TextPosition tp) :
+            Expression(std::move(tp)),
+            m_name(std::move(name)),
+            m_value(std::move(value)) {}
+
+    bool can_be_operand() const override { return false; }
+    ExpressionType type() const override { return EXPR_ASSIGN; }
+
+    std::string to_string() const override;
+
+    std::string name() const { return std::move(m_name); }
+    ExpressionPointer value() const { return std::move(m_value); }
+
+private:
+    const std::string m_name;
+    const ExpressionPointer m_value;
+};
+
 // begin ... end
 class BlockExpression : public Expression {
 public:
@@ -182,6 +203,24 @@ public:
     ExpressionType type() const override { return EXPR_BLOCK; }
 
     std::string to_string() const override;
+
+    std::list<ExpressionPointer> body() const { return std::move(m_body); }
+
+//    ExpressionPointer find_return(std::string funName) const {
+//        ExpressionPointer result = nullptr;
+//        for (const auto expr : m_body) {
+//            if (expr->type() == EXPR_ASSIGN) {
+//                auto assign = std::static_pointer_cast<AssignExpression>(expr);
+//                if (assign->name() == funName)
+//                    result = assign->value();
+//            } else if (expr->type() == EXPR_BLOCK) {
+//                auto candidate = std::static_pointer_cast<BlockExpression>(expr)->find_return(funName);
+//                if (candidate)
+//                    result = candidate;
+//            }
+//        }
+//        return result;
+//    }
 
 private:
     const std::list<ExpressionPointer> m_body;
@@ -263,6 +302,18 @@ public:
         return std::move(result);
     }
 
+    std::list<Variable> vars() {
+        if (m_vars)
+            return m_vars->vars();
+        return {};
+    }
+
+    std::list<std::pair<std::string, ExpressionPointer>> consts() {
+        if (m_consts)
+            return m_consts->consts();
+        return {};
+    }
+
     TokenType return_type() const { return m_type; }
     std::shared_ptr<BlockExpression> body() const { return m_body; }
     //size_t number_of_args() const { return m_arguments.size(); }
@@ -296,6 +347,22 @@ public:
     ExpressionType type() const override { return EXPR_TOP_LEVEL; }
 
     std::string to_string() const override;
+
+    std::list<std::pair<std::string, ExpressionPointer>> consts() const {
+        if (m_consts)
+            return std::move(m_consts->consts());
+        return {};
+    }
+
+    std::list<Variable> vars() const {
+        if (m_vars)
+            return std::move(m_vars->vars());
+        return {};
+    }
+
+    std::shared_ptr<BlockExpression> body() const {
+        return std::move(m_body);
+    }
 
 private:
     std::list<std::shared_ptr<FunctionExpression>> m_functions;
@@ -375,24 +442,5 @@ public:
 };
 
 
-class AssignExpression : public Expression {
-public:
-    AssignExpression(const std::string name, const ExpressionPointer value, const TextPosition tp) :
-            Expression(std::move(tp)),
-            m_name(std::move(name)),
-            m_value(std::move(value)) {}
-
-    bool can_be_operand() const override { return false; }
-    ExpressionType type() const override { return EXPR_ASSIGN; }
-
-    std::string to_string() const override;
-
-    std::string name() const { return std::move(m_name); }
-    ExpressionPointer value() const { return std::move(m_value); }
-
-private:
-    const std::string m_name;
-    const ExpressionPointer m_value;
-};
 
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H

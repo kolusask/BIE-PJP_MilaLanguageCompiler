@@ -32,8 +32,10 @@ llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
             return std::move(gen_condition(std::move(std::static_pointer_cast<ConditionExpression>(expr))));
         case EXPR_ASSIGN:
             return std::move(gen_assign(std::move(std::static_pointer_cast<AssignExpression>(expr))));
+        case EXPR_BLOCK:
+            return std::move(gen_block(std::move(std::static_pointer_cast<BlockExpression>(expr))));
         default:
-            throw Exception(expr->position(), "NOT IMPLEMENTED");
+            throw Exception("NOT IMPLEMENTED");
     }
 }
 
@@ -118,9 +120,7 @@ llvm::Value *CodeGenerator::get_default_value(TokenType type) {
     }
 }
 
-llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpression> ep) {
-    auto expr = std::static_pointer_cast<FunctionExpression>(ep);
-
+llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpression> expr) {
     // Prototype
     std::vector<llvm::Type*> argTypes;
     for (auto& tt : expr->arg_types())
@@ -133,17 +133,37 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     size_t i = 0;
     for (auto& arg : function->args())
         arg.setName(argNames[i++]);
-
-    // Body
-    auto block = llvm::BasicBlock::Create(m_context, "entry", function);
-    m_builder->SetInsertPoint(block);
+//TODO Clean up this mess
+    // arguments
     for (auto& arg : function->args()) {
         auto alloca = create_alloca(function, arg.getName(), arg.getType());
         m_builder->CreateStore(&arg, alloca);
         m_variables[std::string(arg.getName())] = alloca;
     }
 
-    // TODO add return
+    // Vars and consts
+    auto oldConsts = m_constants;
+    for (auto& c : expr->consts()) {
+        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt16Ty(m_context));
+        m_builder->CreateStore(generate(c.second), m_constants[c.first]);
+    }
+
+    auto oldVars = m_variables;
+    for (auto& v : m_tree->vars())
+        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt16Ty(m_context));
+    m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
+
+    // body
+    auto block = llvm::BasicBlock::Create(m_context, "entry", function);
+    m_builder->SetInsertPoint(block);
+
+    generate(expr->body());
+
+    m_builder->CreateRet(m_variables[expr->name()]);
+
+    m_variables = oldVars;
+    m_constants = oldConsts;
+
     return nullptr;
 }
 
@@ -239,6 +259,28 @@ void CodeGenerator::write_output(const char *fileName) {
 
 void CodeGenerator::print() const {
     m_module->print(llvm::errs(), nullptr);
+}
+
+llvm::Value *CodeGenerator::generate_code() {
+    llvm::BasicBlock* block = llvm::BasicBlock::Create(m_context);
+    m_builder->SetInsertPoint(block);
+    auto function = m_builder->GetInsertBlock()->getParent();
+    for (auto& c : m_tree->consts()) {
+        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt16Ty(m_context));
+        m_builder->CreateStore(generate(c.second), m_constants[c.first]);
+    }
+    for (auto& v : m_tree->vars())
+        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt16Ty(m_context));
+    generate(m_tree->body());
+    return function;
+}
+
+llvm::Value *CodeGenerator::gen_block(std::shared_ptr<BlockExpression> expr) {
+    auto block = llvm::BasicBlock::Create(m_context, "entry", m_builder->GetInsertBlock()->getParent());
+    m_builder->SetInsertPoint(block);
+    for (auto& e : expr->body())
+        generate(e);
+    return block;
 }
 
 

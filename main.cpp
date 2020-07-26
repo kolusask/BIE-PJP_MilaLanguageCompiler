@@ -19,7 +19,8 @@ int main(int argc, char* args[]) {
         try {
             parser.parse();
             const char* outFile = argc >= 3 ? args[2] : "output.o";
-            CodeGenerator generator;
+            CodeGenerator generator(parser.get_tree());
+            generator.generate_code();
             generator.print();
             generator.write_output(outFile);
 
@@ -41,7 +42,7 @@ int main(int argc, char* args[]) {
                     std::cerr << '~';
                 std::cerr << std::endl;
             }
-            //std::cerr << "ERROR:\t" << e.message() << std::endl;
+            std::cerr << "ERROR:\t" << e.message() << std::endl;
             return 2;
         }
     }

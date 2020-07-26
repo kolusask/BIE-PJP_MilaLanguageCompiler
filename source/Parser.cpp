@@ -19,14 +19,14 @@ TextPosition Parser::position() {
 }
 
 std::string Parser::get_source() const {
-    return m_source->to_string();
+    return m_tree->to_string();
 }
 
 void Parser::parse() {
     std::string name = "Default";
     if (next_token()->type() == TOK_PROGRAM)
         name = parse_program_name();
-    m_source = parse_top_level();
+    m_tree = parse_top_level();
 }
 
 std::string Parser::parse_program_name() {
@@ -378,5 +378,9 @@ std::shared_ptr<BinaryOperationExpression> Parser::parse_minus() {
     static const auto minusOne = std::make_shared<IntegerExpression>(-1, std::move(position()));
     auto expr = parse_expression();
     return std::make_shared<BinaryOperationExpression>(multiply, minusOne, expr, false, std::move(position()));
+}
+
+std::shared_ptr<TopLevelExpression> Parser::get_tree() const {
+    return m_tree;
 }
 

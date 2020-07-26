@@ -17,6 +17,7 @@ public:
     Parser(std::istream& stream);
     void parse();
     std::string get_source() const;
+    std::shared_ptr<TopLevelExpression> get_tree() const;
 
 private:
     std::string parse_program_name();
@@ -46,7 +47,7 @@ private:
     std::shared_ptr<Token> m_lastToken;
     Lexer m_lexer;
     std::string m_programName = "";
-    ExpressionPointer m_source = nullptr;
+    std::shared_ptr<TopLevelExpression> m_tree = nullptr;
 };
 
 
