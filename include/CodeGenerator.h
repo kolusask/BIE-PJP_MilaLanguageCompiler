@@ -25,23 +25,7 @@ public:
             m_builder(std::make_shared<llvm::IRBuilder<>>(m_context)),
             m_module(std::make_unique<llvm::Module>("jit", m_context)),
             m_tree(std::move(tree)) {
-        // printf
-        auto printfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
-                                                  {llvm::Type::getInt8PtrTy(m_context)}, true);
-        auto printfFun = llvm::Function::Create(printfType, llvm::Function::ExternalLinkage,
-                "printf", m_module.get());
-
-        // writeln(int)
-        auto writelnType = llvm::FunctionType::get(llvm::Type::getInt16Ty(m_context),
-                {llvm::Type::getInt16Ty(m_context)}, false);
-        auto writelnFun = llvm::Function::Create(writelnType, llvm::Function::ExternalLinkage,
-                "writeln", m_module.get());
-        auto wlnBlock = llvm::BasicBlock::Create(m_context, "start", writelnFun);
-        m_builder->SetInsertPoint(wlnBlock);
-        llvm::Value *formatStr =  m_builder->CreateGlobalStringPtr("%d\n");
-        m_builder->CreateCall(printfType, printfFun, {formatStr, writelnFun->getArg(0)});
-        m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), 0));
-
+        add_standard_functions();
     }
     llvm::Value* generate(const ExpressionPointer expr);
     llvm::Value* generate_code();
@@ -49,6 +33,8 @@ public:
     void print() const;
 
 private:
+    void add_standard_functions();
+
     llvm::Value* gen_block(const std::shared_ptr<BlockExpression> expr);
     llvm::Value* gen_integer(const std::shared_ptr<IntegerExpression> ep);
     llvm::Value* gen_identifier(const std::shared_ptr<IdentifierExpression> ep);

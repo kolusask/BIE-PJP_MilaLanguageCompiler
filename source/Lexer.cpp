@@ -39,7 +39,7 @@ double Lexer::read_number(bool& isDouble) {
 
 std::string Lexer::read_identifier() {
     std::string identifier(1, m_char);
-    while (std::isalpha(read_char()) || std::isdigit(m_char))
+    while (std::isalpha(read_char()) || std::isdigit(m_char) || m_char == '_')
         identifier += m_char;
     return std::move(identifier);
 }

@@ -95,11 +95,26 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
                 + std::to_string(expr->number_of_args()));
     }
 
-    std::vector<llvm::Value*> args;
-    for (const auto& arg : expr->args())
-        args.push_back(generate(arg));
-
-    return m_builder->CreateCall(function, args, "calltmp");
+    std::vector<llvm::Value *> args;
+    if (expr->name() == "readln") {
+        auto arg = *expr->args().cbegin();
+        if (arg->type() == EXPR_IDENTIFIER) {
+            auto ident = std::static_pointer_cast<IdentifierExpression>(arg);
+            auto value = m_variables[ident->value()];
+            if (!value)
+                throw Exception(arg->position(), "Unknown or constant identifier");
+            args.push_back(value);
+        } else
+            throw Exception(arg->position(), "Can only read into a variable");
+    } else {
+        for (const auto &arg : expr->args())
+            args.push_back(generate(arg));
+    }
+    auto call = m_builder->CreateCall(function, args, "calltmp");
+    if (expr->name() == "readln")
+        m_builder->CreateStore(
+                llvm::ConstantInt::get(llvm::Type::getInt8Ty(m_context), 0), m_variables["_extra"]);
+    return call;
 }
 
 llvm::Type* CodeGenerator::get_type(TokenType type) {
@@ -225,6 +240,8 @@ llvm::Value *CodeGenerator::generate_code() {
     auto function = llvm::Function::Create(fType, llvm::Function::ExternalLinkage, "main", m_module.get());
     llvm::BasicBlock* block = llvm::BasicBlock::Create(m_context, "start", function);
     m_builder->SetInsertPoint(block);
+    auto extraAlloca = create_alloca(function, "_extra", llvm::Type::getInt8Ty(m_context));
+    m_variables["_extra"] = extraAlloca;
     for (auto& c : m_tree->consts()) {
         m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt16Ty(m_context));
         m_builder->CreateStore(generate(c.second), m_constants[c.first]);
@@ -294,5 +311,43 @@ void CodeGenerator::write_output(const char *fileName) {
 
     dest.flush();
 
-    std::system((std::string("clang ") + fileName + " -o " + fileName + ".o").c_str());
+    std::system((std::string("clang ") + fileName + " -o " + fileName + ".bin").c_str());
+}
+
+void CodeGenerator::add_standard_functions() {
+    // printf
+    auto printfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+            {llvm::Type::getInt8PtrTy(m_context)}, true);
+    auto printfFun = llvm::Function::Create(printfType, llvm::Function::ExternalLinkage,
+            "printf", m_module.get());
+
+    // writeln(int)
+    auto writelnType = llvm::FunctionType::get(llvm::Type::getInt16Ty(m_context),
+            {llvm::Type::getInt16Ty(m_context)}, false);
+    auto writelnFun = llvm::Function::Create(writelnType, llvm::Function::ExternalLinkage,
+            "writeln", m_module.get());
+    auto writelnBlk = llvm::BasicBlock::Create(m_context, "start", writelnFun);
+    m_builder->SetInsertPoint(writelnBlk);
+    llvm::Value *writeStr =  m_builder->CreateGlobalStringPtr("%d\n");
+    m_builder->CreateCall(printfType, printfFun, {writeStr, writelnFun->getArg(0)});
+    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), 0));
+
+    // scanf
+    auto scanfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+            {llvm::Type::getInt8PtrTy(m_context)}, true);
+    auto scanfFun = llvm::Function::Create(scanfType, llvm::Function::ExternalLinkage,
+            "scanf", m_module.get());
+
+    // readln(int)
+    auto readlnType = llvm::FunctionType::get(llvm::Type::getInt16Ty(m_context),
+            {llvm::Type::getInt16PtrTy(m_context)}, false);
+    auto readlnFun = llvm::Function::Create(readlnType, llvm::Function::ExternalLinkage,
+            "readln", m_module.get());
+    auto readlnBlk = llvm::BasicBlock::Create(m_context, "start", readlnFun);
+    m_builder->SetInsertPoint(readlnBlk);
+    //auto ptr = m_builder->CreateIntToPtr(readlnFun->getArg(0), llvm::Type::getInt8PtrTy(m_context));
+    //auto ptr = m_builder->CreateLoad(m_builder->CreateIntToPtr(readlnFun->getArg(0), llvm::Type::getInt8PtrTy(m_context)), "ptr");
+    llvm::Value* readStr = m_builder->CreateGlobalStringPtr("%d[^\n]");
+    m_builder->CreateCall(scanfType, scanfFun, {readStr, readlnFun->getArg(0)});
+    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), 0));
 }
