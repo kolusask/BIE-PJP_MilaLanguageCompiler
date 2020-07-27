@@ -44,7 +44,7 @@ llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
 llvm::Value* CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression> ep) {
     auto expr = std::static_pointer_cast<IntegerExpression>(ep);
 
-    return llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), expr->value());// llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), expr->value());// llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
 }
 
 llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> ep) {
@@ -65,13 +65,13 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
     auto right = generate(expr->right());
     switch(expr->op()->type()) {
         case TOK_PLUS:
-            return m_builder->CreateFAdd(left, right, "addtmp");
+            return m_builder->CreateAdd(left, right, "addtmp");
         case TOK_MINUS:
-            return m_builder->CreateFSub(left, right, "subtmp");
+            return m_builder->CreateSub(left, right, "subtmp");
         case TOK_MULTIPLY:
-            return m_builder->CreateFMul(left, right, "multmp");
+            return m_builder->CreateMul(left, right, "multmp");
         case TOK_LESS:
-            return m_builder->CreateFCmpULT(left, right, "cmptmp");
+            return m_builder->CreateICmpSLT(left, right, "cmptmp");
         default: throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 
@@ -161,13 +161,13 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     // Vars and consts
     auto oldConsts = m_constants;
     for (auto& c : expr->consts()) {
-        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt16Ty(m_context));
+        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
         m_builder->CreateStore(generate(c.second), m_constants[c.first]);
     }
 
     auto oldVars = m_variables;
     for (auto& v : m_tree->vars())
-        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt16Ty(m_context));
+        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
     m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
 
     // body
@@ -243,11 +243,11 @@ llvm::Value *CodeGenerator::generate_code() {
     auto extraAlloca = create_alloca(function, "_extra", llvm::Type::getInt8Ty(m_context));
     m_variables["_extra"] = extraAlloca;
     for (auto& c : m_tree->consts()) {
-        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt16Ty(m_context));
+        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
         m_builder->CreateStore(generate(c.second), m_constants[c.first]);
     }
     for (auto& v : m_tree->vars())
-        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt16Ty(m_context));
+        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
     generate(m_tree->body());
     m_builder->CreateRet(nullptr);
     return function;
@@ -322,15 +322,15 @@ void CodeGenerator::add_standard_functions() {
             "printf", m_module.get());
 
     // writeln(int)
-    auto writelnType = llvm::FunctionType::get(llvm::Type::getInt16Ty(m_context),
-            {llvm::Type::getInt16Ty(m_context)}, false);
+    auto writelnType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+            {llvm::Type::getInt32Ty(m_context)}, false);
     auto writelnFun = llvm::Function::Create(writelnType, llvm::Function::ExternalLinkage,
             "writeln", m_module.get());
     auto writelnBlk = llvm::BasicBlock::Create(m_context, "start", writelnFun);
     m_builder->SetInsertPoint(writelnBlk);
     llvm::Value *writeStr =  m_builder->CreateGlobalStringPtr("%d\n");
     m_builder->CreateCall(printfType, printfFun, {writeStr, writelnFun->getArg(0)});
-    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), 0));
+    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
 
     // scanf
     auto scanfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
@@ -339,8 +339,8 @@ void CodeGenerator::add_standard_functions() {
             "scanf", m_module.get());
 
     // readln(int)
-    auto readlnType = llvm::FunctionType::get(llvm::Type::getInt16Ty(m_context),
-            {llvm::Type::getInt16PtrTy(m_context)}, false);
+    auto readlnType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+            {llvm::Type::getInt32PtrTy(m_context)}, false);
     auto readlnFun = llvm::Function::Create(readlnType, llvm::Function::ExternalLinkage,
             "readln", m_module.get());
     auto readlnBlk = llvm::BasicBlock::Create(m_context, "start", readlnFun);
@@ -349,5 +349,5 @@ void CodeGenerator::add_standard_functions() {
     //auto ptr = m_builder->CreateLoad(m_builder->CreateIntToPtr(readlnFun->getArg(0), llvm::Type::getInt8PtrTy(m_context)), "ptr");
     llvm::Value* readStr = m_builder->CreateGlobalStringPtr("%d[^\n]");
     m_builder->CreateCall(scanfType, scanfFun, {readStr, readlnFun->getArg(0)});
-    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), 0));
+    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
 }
