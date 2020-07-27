@@ -42,10 +42,8 @@ llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
     }
 }
 
-llvm::Value* CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression> ep) {
-    auto expr = std::static_pointer_cast<IntegerExpression>(ep);
-
-    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), expr->value());// llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
+llvm::Value* CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression> expr) {
+    return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), expr->value());
 }
 
 llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> expr) {
@@ -58,19 +56,19 @@ llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpre
     throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
 }
 
-//void CodeGenerator::to_double(llvm::Value *&value) {
-//    value->getType() ==
-//}
-//
-//void CodeGenerator::equalize_types(llvm::Value *left, llvm::Value *right) {
-//
-//}
+llvm::Value * CodeGenerator::to_double(llvm::Value *value, llvm::Type *type) {
+    auto origType = value->getType();
+    if (!type)
+        type = llvm::Type::getDoubleTy(m_context);
+    return m_builder->CreateSIToFP(value, type, "double");
+}
 
 llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
     auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
 
     auto left = generate(expr->left());
     auto right = generate(expr->right());
+    left->getType() == right->getType();
 
     switch(expr->op()->type()) {
         case TOK_PLUS:
@@ -199,8 +197,8 @@ llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const s
 llvm::Value* CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
-    auto condValue = m_builder->CreateFCmpONE(
-            generate(expr->condition()), llvm::ConstantFP::get(m_context, llvm::APFloat(0.0)));
+    static auto trueValue = llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 1);
+    auto condValue = generate(expr->condition());
 
     auto function = m_builder->GetInsertBlock()->getParent();
     // blocks
@@ -260,8 +258,6 @@ llvm::Value *CodeGenerator::generate_code() {
 }
 
 llvm::Value *CodeGenerator::gen_block(std::shared_ptr<BlockExpression> expr) {
-//    auto block = llvm::BasicBlock::Create(m_context, "entry", m_builder->GetInsertBlock()->getParent());
-//    m_builder->SetInsertPoint(block);
     for (auto& e : expr->body())
         generate(e);
     return nullptr;

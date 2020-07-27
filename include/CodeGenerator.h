@@ -45,7 +45,7 @@ private:
     llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> ep);
     //llvm::Value* gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
 
-    void to_double(llvm::Value*& value);
+    llvm::Value *to_double(llvm::Value *value, llvm::Type *type = nullptr);
     void equalize_types(llvm::Value*& left, llvm::Value*& right);
     llvm::Type* get_type(TokenType type);
     llvm::Value* get_default_value(TokenType type);
