@@ -19,6 +19,7 @@
 //#include <cstdlib>
 
 llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
+    auto type = expr->type();
     switch(expr->type()) {
         case EXPR_INTEGER:
             return std::move(gen_integer(std::move(std::static_pointer_cast<IntegerExpression>(expr))));
@@ -47,22 +48,30 @@ llvm::Value* CodeGenerator::gen_integer(const std::shared_ptr<IntegerExpression>
     return llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), expr->value());// llvm::ConstantInt::get(m_context, llvm::APSInt(expr->value()));
 }
 
-llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> ep) {
-    auto expr = std::static_pointer_cast<IdentifierExpression>(ep);
+llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpression> expr) {
+    llvm::Value* value;
+    if ((value = m_constants[expr->value()]))
+        return value;
+    if ((value = m_variables[expr->value()]))
+        return m_builder->CreateLoad(value, expr->value().c_str());
 
-    auto value = m_variables[expr->value()];
-    if (!value)
-        value = m_constants[expr->value()];
-    if (!value)
-        throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
-    return m_builder->CreateLoad(value, expr->value().c_str());
+    throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
 }
+
+//void CodeGenerator::to_double(llvm::Value *&value) {
+//    value->getType() ==
+//}
+//
+//void CodeGenerator::equalize_types(llvm::Value *left, llvm::Value *right) {
+//
+//}
 
 llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
     auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
 
     auto left = generate(expr->left());
     auto right = generate(expr->right());
+
     switch(expr->op()->type()) {
         case TOK_PLUS:
             return m_builder->CreateAdd(left, right, "addtmp");
@@ -160,10 +169,8 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
 
     // Vars and consts
     auto oldConsts = m_constants;
-    for (auto& c : expr->consts()) {
-        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
-        m_builder->CreateStore(generate(c.second), m_constants[c.first]);
-    }
+    for (auto& c : expr->consts())
+        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
 
     auto oldVars = m_variables;
     for (auto& v : m_tree->vars())
@@ -216,7 +223,7 @@ llvm::Value* CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpress
     // merge
     function->getBasicBlockList().push_back(mergeBlock);
     m_builder->SetInsertPoint(mergeBlock);
-    //m_builder->
+    return function;
 }
 
 llvm::Value* CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> ep) {
@@ -242,10 +249,9 @@ llvm::Value *CodeGenerator::generate_code() {
     m_builder->SetInsertPoint(block);
     auto extraAlloca = create_alloca(function, "_extra", llvm::Type::getInt8Ty(m_context));
     m_variables["_extra"] = extraAlloca;
-    for (auto& c : m_tree->consts()) {
-        m_constants[c.first] = create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
-        m_builder->CreateStore(generate(c.second), m_constants[c.first]);
-    }
+    for (auto& c : m_tree->consts())
+        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
+
     for (auto& v : m_tree->vars())
         m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
     generate(m_tree->body());
@@ -351,3 +357,5 @@ void CodeGenerator::add_standard_functions() {
     m_builder->CreateCall(scanfType, scanfFun, {readStr, readlnFun->getArg(0)});
     m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
 }
+
+

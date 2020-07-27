@@ -43,8 +43,10 @@ private:
     llvm::Value* gen_function(const std::shared_ptr<FunctionExpression> ep);
     llvm::Value* gen_condition(const std::shared_ptr<ConditionExpression> ep);
     llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> ep);
-    llvm::Value* gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
+    //llvm::Value* gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
 
+    void to_double(llvm::Value*& value);
+    void equalize_types(llvm::Value*& left, llvm::Value*& right);
     llvm::Type* get_type(TokenType type);
     llvm::Value* get_default_value(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
@@ -53,7 +55,7 @@ private:
     std::shared_ptr<llvm::IRBuilder<>> m_builder;
     std::unique_ptr<llvm::Module> m_module;
     std::map<std::string, llvm::AllocaInst *> m_variables;
-    std::map<std::string, llvm::AllocaInst *> m_constants;
+    std::map<std::string, llvm::Constant *> m_constants;
     std::shared_ptr<TopLevelExpression> m_tree;
 };
 
