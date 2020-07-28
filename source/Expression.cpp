@@ -69,12 +69,16 @@ std::string FunctionExpression::to_string() const {
         oss << arg.first << ": " << arg.second;
     }
     static const std::map<TokenType, std::string> dataTypeMap = {{TOK_INTEGER, "integer"}};
-    oss << "): " << dataTypeMap.at(m_type) << ';' << std::endl;
+    if (m_type == TOK_VOID)
+        oss << ");" << std::endl;
+    else
+        oss << "): " << dataTypeMap.at(m_type) << ';' << std::endl;
     if (m_consts)
         oss << m_consts->to_string();
     if (m_vars)
         oss << m_vars->to_string();
-    oss << m_body->to_string() << ';' << std::endl;
+    if (m_body)
+        oss << m_body->to_string() << ';' << std::endl;
     return oss.str();
 }
 
@@ -122,4 +126,12 @@ std::string DoubleExpression::to_string() const {
 
 std::string AssignExpression::to_string() const {
     return m_name + ":=" + m_value->to_string();
+}
+
+std::string BreakExpression::to_string() const {
+    return "break";
+}
+
+std::string ExitExpression::to_string() const {
+    return "exit";
 }

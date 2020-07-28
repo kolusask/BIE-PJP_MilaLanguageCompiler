@@ -7,14 +7,20 @@
 #include <set>
 
 
-const std::list<Syntax::Operator> Syntax::s_operators = {{TOK_PLUS, "+", false},
-                                                         {TOK_MINUS, "-", false},
-                                                         {TOK_MULTIPLY, "*", false},
-                                                         {TOK_EQUAL, "=", false},
-                                                         {TOK_MOD, "mod", false},
-                                                         {TOK_MORE, ">", true},
+const std::list<Syntax::Operator> Syntax::s_operators = {{TOK_ASSIGN, ":=", false},
+                                                         {TOK_DIVIDE, "/", false},
+                                                         {TOK_EQUAL, "=", true},
                                                          {TOK_LESS, "<", true},
-                                                         {TOK_ASSIGN, ":=", false}};
+                                                         {TOK_LESS_OR_EQUAL, "<=", true},
+                                                         {TOK_MINUS, "-", false},
+                                                         {TOK_MOD, "mod", false},
+                                                         {TOK_GREATER, ">", true},
+                                                         {TOK_GREATER_OR_EQUAL, ">=", true},
+                                                         {TOK_MULTIPLY, "*", false},
+                                                         {TOK_NOT_EQUAL, "<>", true},
+                                                         {TOK_PLUS, "+", false},
+                                                         {TOK_AND, "and", true},
+                                                         {TOK_OR, "or", true}};
 
 TokenType Syntax::check_character(const char ch) {
     static const std::map<char, TokenType> characters = {{'=', TOK_EQUAL},
@@ -32,6 +38,7 @@ TokenType Syntax::check_character(const char ch) {
 
 TokenType Syntax::check_keyword(const std::string &word) {
     static const std::map<std::string, TokenType> keyWords = {{"begin", TOK_BEGIN},
+                                                              {"break", TOK_BREAK},
                                                               {"const", TOK_CONST},
                                                               {"end", TOK_END},
                                                               {"program", TOK_PROGRAM},
@@ -45,7 +52,11 @@ TokenType Syntax::check_keyword(const std::string &word) {
                                                               {"do", TOK_DO},
                                                               {"for", TOK_FOR},
                                                               {"to", TOK_TO},
-                                                              {"downto", TOK_DOWNTO}};
+                                                              {"downto", TOK_DOWNTO},
+                                                              {"exit", TOK_EXIT},
+                                                              {"procedure", TOK_PROCEDURE},
+                                                              {"double", TOK_DOUBLE},
+                                                              {"forward", TOK_FORWARD}};
     auto it = keyWords.find(word);
     if (it != keyWords.end())
         return it->second;
@@ -71,7 +82,7 @@ TokenType Syntax::check_operator(const std::string &op) {
 }
 
 bool Syntax::is_datatype(TokenType dt) {
-    static const std::set<TokenType> dataTypes = {TOK_INTEGER};
+    static const std::set<TokenType> dataTypes = {TOK_INTEGER, TOK_DOUBLE};
     return dataTypes.count(dt);
 }
 

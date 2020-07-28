@@ -25,49 +25,46 @@ public:
             m_builder(std::make_shared<llvm::IRBuilder<>>(m_context)),
             m_module(std::make_unique<llvm::Module>("jit", m_context)),
             m_tree(std::move(tree)) {
-        // printf
-        auto printfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
-                                                  {llvm::Type::getInt8PtrTy(m_context)}, true);
-        auto printfFun = llvm::Function::Create(printfType, llvm::Function::ExternalLinkage,
-                "printf", m_module.get());
-
-        // writeln(int)
-        auto writelnType = llvm::FunctionType::get(llvm::Type::getInt16Ty(m_context),
-                {llvm::Type::getInt16Ty(m_context)}, false);
-        auto writelnFun = llvm::Function::Create(writelnType, llvm::Function::ExternalLinkage,
-                "writeln", m_module.get());
-        auto wlnBlock = llvm::BasicBlock::Create(m_context, "start", writelnFun);
-        m_builder->SetInsertPoint(wlnBlock);
-        llvm::Value *formatStr =  m_builder->CreateGlobalStringPtr("%d\n");
-        m_builder->CreateCall(printfType, printfFun, {formatStr, writelnFun->getArg(0)});
-        m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt16Ty(m_context), 0));
-
+        add_standard_functions();
     }
-    llvm::Value* generate(const ExpressionPointer expr);
+    llvm::Value *generate(const ExpressionPointer expr, llvm::BasicBlock *breakTo, llvm::BasicBlock *exitTo);
     llvm::Value* generate_code();
     void write_output(const char* fileName);
     void print() const;
 
 private:
-    llvm::Value* gen_block(const std::shared_ptr<BlockExpression> expr);
+    void add_standard_functions();
+
+    llvm::Value *gen_block(const std::shared_ptr<BlockExpression> expr, llvm::BasicBlock *breakTo,
+                           llvm::BasicBlock *exitTo);
     llvm::Value* gen_integer(const std::shared_ptr<IntegerExpression> ep);
+    llvm::Value* gen_double(const std::shared_ptr<DoubleExpression> expr);
     llvm::Value* gen_identifier(const std::shared_ptr<IdentifierExpression> ep);
     llvm::Value* gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep);
     llvm::Value* gen_call(const std::shared_ptr<CallExpression> ep);
     llvm::Value* gen_function(const std::shared_ptr<FunctionExpression> ep);
-    llvm::Value* gen_condition(const std::shared_ptr<ConditionExpression> ep);
+    llvm::Value *gen_condition(const std::shared_ptr<ConditionExpression> ep, llvm::BasicBlock *breakTo,
+                               llvm::BasicBlock *exitTo);
     llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> ep);
-    llvm::Value* gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
+    llvm::Value *gen_while(const std::shared_ptr<WhileLoopExpression> expr, llvm::BasicBlock *exitTo);
+    llvm::Value* gen_break(llvm::BasicBlock *breakTo, TextPosition position);
+    llvm::Value *gen_for(const std::shared_ptr<ForLoopExpression> expr, llvm::BasicBlock *exitTo);
+    llvm::Value* gen_exit(llvm::BasicBlock* exitTo, TextPosition position);
+    llvm::Value* gen_parentheses(const std::shared_ptr<ParenthesesExpression> expr);
 
-    llvm::Type* get_type(TokenType type);
-    llvm::Value* get_default_value(TokenType type);
+    llvm::Value* assign(std::string name, llvm::Value *value, TextPosition position);
+    llvm::Value *load(const std::string &name, TextPosition position);
+    llvm::Value *to_double(llvm::Value *value, llvm::Type *type = nullptr);
+    llvm::Type *get_type(TokenType type);
+    llvm::Constant * get_default_value(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
 
     llvm::LLVMContext m_context;
     std::shared_ptr<llvm::IRBuilder<>> m_builder;
     std::unique_ptr<llvm::Module> m_module;
     std::map<std::string, llvm::AllocaInst *> m_variables;
-    std::map<std::string, llvm::AllocaInst *> m_constants;
+    std::map<std::string, llvm::Constant *> m_constants;
+    std::map<std::string, llvm::GlobalVariable*> m_globals;
     std::shared_ptr<TopLevelExpression> m_tree;
 };
 

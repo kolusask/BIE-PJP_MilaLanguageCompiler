@@ -33,11 +33,13 @@ private:
     std::shared_ptr<VarExpression> parse_var();
     std::shared_ptr<BlockExpression> parse_block();
     std::shared_ptr<ParenthesesExpression> parse_parentheses();
-    std::shared_ptr<FunctionExpression> parse_function();
+    std::shared_ptr<FunctionExpression> parse_function(bool procedure);
     std::shared_ptr<ConditionExpression> parse_condition();
     std::shared_ptr<WhileLoopExpression> parse_while();
     std::shared_ptr<ForLoopExpression> parse_for();
     std::shared_ptr<BinaryOperationExpression> parse_minus();
+    std::shared_ptr<BreakExpression> parse_break();
+    std::shared_ptr<ExitExpression> parse_exit();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();

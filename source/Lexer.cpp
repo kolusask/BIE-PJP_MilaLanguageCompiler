@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <memory>
+#include <sstream>
 
 Lexer::Lexer(std::istream &stream) :
     m_stream(stream),
@@ -37,14 +38,37 @@ double Lexer::read_number(bool& isDouble) {
     return std::stod(number);
 }
 
+int Lexer::read_hex() {
+    std::stringstream reading;
+    while (std::isdigit(read_char()))
+        reading << m_char;
+    int result;
+    std::cout << reading.str() << std::endl;
+    reading >> std::hex >> result;
+    return result;
+}
+
+int Lexer::read_oct() {
+    std::stringstream reading;
+    while (std::isdigit(read_char()))
+        reading << m_char;
+    int result;
+    reading >> std::oct >> result;
+    return result;
+}
+
 std::string Lexer::read_identifier() {
     std::string identifier(1, m_char);
-    while (std::isalpha(read_char()) || std::isdigit(m_char))
+    while (std::isalpha(read_char()) || std::isdigit(m_char) || m_char == '_')
         identifier += m_char;
     return std::move(identifier);
 }
 
 std::string Lexer::read_operator() {
+    if (m_char == '=') {
+        read_char();
+        return "=";
+    }
     std::string op(1, m_char);
     while (is_in_operator(read_char())) {
         op += m_char;
@@ -107,6 +131,10 @@ std::shared_ptr<Token> Lexer::next_token() {
                 return as_token<SimpleToken, TokenType>(type);
             throw InvalidSymbolException(m_position, m_char);
         }
+        case '$':   // hex
+            return as_token<IntegerToken, int>(read_hex());
+        case '&':
+            return as_token<IntegerToken, int>(read_oct());
         //single char
         default: {
             const TokenType type = Syntax::check_character(m_char);
@@ -132,3 +160,5 @@ bool Lexer::is_in_operator(const char ch) const {
                                           ':'};
     return op_set.count(ch);
 }
+
+
