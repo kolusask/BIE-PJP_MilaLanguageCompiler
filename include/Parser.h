@@ -7,23 +7,49 @@
 
 #include "Lexer.h"
 
+#include "Expression.h"
+
+#include <list>
+
+
 class Parser {
 public:
     Parser(std::istream& stream);
-    void start_parsing();
-
+    void parse();
+    std::string get_source() const;
+    std::shared_ptr<TopLevelExpression> get_tree() const;
 
 private:
+    std::string parse_program_name();
+    ExpressionPointer parse_expression();
+    ExpressionPointer parse_single();
     // parse specific constructs
-    void parse_program_definition();
-    void parse_top_level();
-    void parse_identifier();
-    void parse_const();
+    ExpressionPointer parse_binary(int exprPrec, ExpressionPointer left);
+    ExpressionPointer parse_identifier();   // or a function call
+    std::shared_ptr<IntegerExpression> parse_integer();
+    std::shared_ptr<DoubleExpression> parse_double();
+    std::shared_ptr<TopLevelExpression> parse_top_level();
+    std::shared_ptr<ConstExpression> parse_const();
+    std::shared_ptr<VarExpression> parse_var();
+    std::shared_ptr<BlockExpression> parse_block();
+    std::shared_ptr<ParenthesesExpression> parse_parentheses();
+    std::shared_ptr<FunctionExpression> parse_function(bool procedure);
+    std::shared_ptr<ConditionExpression> parse_condition();
+    std::shared_ptr<WhileLoopExpression> parse_while();
+    std::shared_ptr<ForLoopExpression> parse_for();
+    std::shared_ptr<BinaryOperationExpression> parse_minus();
+    std::shared_ptr<BreakExpression> parse_break();
+    std::shared_ptr<ExitExpression> parse_exit();
 
+    inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();
-    void parse_rest(const std::shared_ptr<Token> startToken);
-    Lexer m_Lexer;
-    bool m_ProgramDefined;
+
+    TextPosition position();
+
+    std::shared_ptr<Token> m_lastToken;
+    Lexer m_lexer;
+    std::string m_programName = "";
+    std::shared_ptr<TopLevelExpression> m_tree = nullptr;
 };
 
 

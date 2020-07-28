@@ -7,15 +7,27 @@
 
 #include <string>
 
+#include "Lexer.h"
+
 class Exception {
 public:
-    Exception(const TextPosition& pos, std::string message) :
-        m_Message(std::string("Line ") + std::to_string(pos.line) + ", column " + std::to_string(pos.column) + ":\n"
-        + message) {}
-    std::string message() const { return m_Message; }
+    Exception(const TextPosition& pos, std::string mess) :
+        m_position(std::move(pos)),
+        m_message(std::move(mess)),
+        m_hasPosition(true) {}
+
+    Exception(std::string mess) :
+        m_position({0, 0}),
+        m_hasPosition(false) {}
+
+    TextPosition position() const { return std::move(m_position); }
+    std::string message() const { return m_message; }
+    bool has_position() const { return m_hasPosition; }
 
 protected:
-    const std::string m_Message;
+    const TextPosition m_position;
+    const std::string m_message;
+    const bool m_hasPosition;
 };
 
 class InvalidSymbolException : public Exception {
@@ -28,6 +40,12 @@ class UnexpectedTokenException : public Exception {
 public:
     UnexpectedTokenException(const TextPosition& pos, const std::string& token) :
         Exception(pos, std::string("Unexpected token: '") + token + '\'') {}
+};
+
+class ExpectedDifferentException : public Exception {
+public:
+    ExpectedDifferentException(const TextPosition& pos, const std::string& token) :
+        Exception(pos, std::string("Expected '") + token + '\'') {}
 };
 
 #endif //MILALANGUAGECOMPILER_EXCEPTION_H
