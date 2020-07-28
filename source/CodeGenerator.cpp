@@ -112,10 +112,14 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
         auto arg = *expr->args().cbegin();
         if (arg->type() == EXPR_IDENTIFIER) {
             auto ident = std::static_pointer_cast<IdentifierExpression>(arg);
-            auto value = m_variables[ident->value()];
-            if (!value)
-                throw Exception(arg->position(), "Unknown or constant identifier");
-            args.push_back(value);
+            llvm::Value* value;
+            if ((value = m_variables[ident->value()]) || (value = m_globals[ident->value()]))
+                args.push_back(value);
+            else {
+                if (m_constants[ident->value()])
+                    throw Exception(arg->position(), "Cannot read to constant");
+                throw Exception(arg->position(), "Unknown identifier: " + ident->value());
+            }
         } else
             throw Exception(arg->position(), "Can only read into a variable");
     } else {
@@ -124,8 +128,7 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
     }
     auto call = m_builder->CreateCall(function, args, "calltmp");
     if (expr->name() == "readln")
-        m_builder->CreateStore(
-                llvm::ConstantInt::get(llvm::Type::getInt8Ty(m_context), 0), m_variables["_extra"]);
+        assign("_extra", m_builder->getInt32(0), expr->position());
     return call;
 }
 
