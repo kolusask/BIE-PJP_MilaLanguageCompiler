@@ -204,7 +204,7 @@ public:
 
     std::string to_string() const override;
 
-    std::list<ExpressionPointer> body() const { return std::move(m_body); }
+    std::list<ExpressionPointer> body() const { return m_body; }
 
 //    ExpressionPointer find_return(std::string funName) const {
 //        ExpressionPointer result = nullptr;
@@ -410,6 +410,9 @@ public:
     ExpressionType type() const override { return EXPR_WHILE_LOOP; }
 
     std::string to_string() const override;
+
+    ExpressionPointer condition() const { return m_condition; }
+    ExpressionPointer body() const { return m_body; }
 
 private:
     const ExpressionPointer m_condition;

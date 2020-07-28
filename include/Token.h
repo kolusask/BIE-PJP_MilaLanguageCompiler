@@ -121,7 +121,7 @@ public:
                                                           {TOK_MOD, 40},
                                                           {TOK_MORE, 10},
                                                           {TOK_LESS, 10},
-                                                          {TOK_ASSIGN, 50}};
+                                                          {TOK_ASSIGN, 5}};
         return prec_map.at(m_type);
     }
     TokenType type() const override { return m_type; }

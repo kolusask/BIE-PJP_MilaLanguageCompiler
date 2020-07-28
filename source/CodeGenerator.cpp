@@ -35,8 +35,8 @@ llvm::Value* CodeGenerator::generate(const ExpressionPointer expr) {
             return std::move(gen_condition(std::move(std::static_pointer_cast<ConditionExpression>(expr))));
         case EXPR_ASSIGN:
             return std::move(gen_assign(std::move(std::static_pointer_cast<AssignExpression>(expr))));
-        case EXPR_BLOCK:
-            return std::move(gen_block(std::move(std::static_pointer_cast<BlockExpression>(expr))));
+        case EXPR_WHILE_LOOP:
+            return std::move(gen_while(std::move(std::static_pointer_cast<WhileLoopExpression>(expr))));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -68,7 +68,6 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
 
     auto left = generate(expr->left());
     auto right = generate(expr->right());
-    left->getType() == right->getType();
 
     switch(expr->op()->type()) {
         case TOK_PLUS:
@@ -194,10 +193,32 @@ llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const s
     return builder.CreateAlloca(type, 0, name.c_str());
 }
 
+llvm::Value *CodeGenerator::gen_while(std::shared_ptr<WhileLoopExpression> expr) {
+    auto condValue = generate(expr->condition());
+
+    auto function = m_builder->GetInsertBlock()->getParent();
+    auto goBlock = llvm::BasicBlock::Create(m_context, "go", function);
+    auto afterBlock = llvm::BasicBlock::Create(m_context, "after");
+
+    auto whileBr = m_builder->CreateCondBr(condValue, goBlock, afterBlock);
+
+    m_builder->SetInsertPoint(goBlock);
+
+    if (expr->body()->type() == EXPR_BLOCK) {
+        auto body = std::static_pointer_cast<BlockExpression>(expr->body());
+        gen_block(body);
+    } else
+        generate(expr->body());
+    condValue = generate(expr->condition());
+    m_builder->CreateCondBr(condValue, goBlock, afterBlock);
+    function->getBasicBlockList().push_back(afterBlock);
+    m_builder->SetInsertPoint(afterBlock);
+    return function;
+}
+
 llvm::Value* CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
-    static auto trueValue = llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 1);
     auto condValue = generate(expr->condition());
 
     auto function = m_builder->GetInsertBlock()->getParent();
@@ -252,7 +273,7 @@ llvm::Value *CodeGenerator::generate_code() {
 
     for (auto& v : m_tree->vars())
         m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
-    generate(m_tree->body());
+    gen_block(m_tree->body());
     m_builder->CreateRet(nullptr);
     return function;
 }
@@ -353,5 +374,6 @@ void CodeGenerator::add_standard_functions() {
     m_builder->CreateCall(scanfType, scanfFun, {readStr, readlnFun->getArg(0)});
     m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
 }
+
 
 

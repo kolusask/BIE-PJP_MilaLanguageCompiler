@@ -43,6 +43,7 @@ private:
     llvm::Value* gen_function(const std::shared_ptr<FunctionExpression> ep);
     llvm::Value* gen_condition(const std::shared_ptr<ConditionExpression> ep);
     llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> ep);
+    llvm::Value* gen_while(const std::shared_ptr<WhileLoopExpression> expr);
     //llvm::Value* gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
 
     llvm::Value *to_double(llvm::Value *value, llvm::Type *type = nullptr);

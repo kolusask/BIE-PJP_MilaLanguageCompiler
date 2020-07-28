@@ -18,7 +18,7 @@ int main(int argc, char* args[]) {
     } else {
         try {
             parser.parse();
-            const char* outFile = argc >= 3 ? args[2] : "output.o";
+            const char* outFile = argc >= 3 ? args[2] : "output";
             CodeGenerator generator(parser.get_tree());
             generator.generate_code();
             generator.print();
