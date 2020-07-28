@@ -11,6 +11,7 @@
 
 enum TokenType {
     TOK_INVALID = 0,
+    TOK_AND,
     TOK_ASSIGN,
     TOK_BEGIN,
     TOK_BREAK,
@@ -18,6 +19,7 @@ enum TokenType {
     TOK_COMMA,
     TOK_COLON,
     TOK_CONST,
+    TOK_DIVIDE,
     TOK_DO,
     TOK_DOT,
     TOK_DOUBLE,
@@ -33,17 +35,23 @@ enum TokenType {
     TOK_IF,
     TOK_INTEGER,
     TOK_LESS,
+    TOK_LESS_OR_EQUAL,
     TOK_MINUS,
     TOK_MOD,
-    TOK_MORE,
+    TOK_GREATER,
+    TOK_GREATER_OR_EQUAL,
     TOK_MULTIPLY,
+    TOK_NOT_EQUAL,
     TOK_OPEN_BRACKET,
+    TOK_OR,
     TOK_PLUS,
+    TOK_PROCEDURE,
     TOK_PROGRAM,
     TOK_SEMICOLON,
     TOK_THEN,
     TOK_TO,
     TOK_VAR,
+    TOK_VOID,
     TOK_WHILE
 };
 
@@ -61,7 +69,8 @@ public:
     SimpleToken(const TokenType type) : m_type(type) {}
     virtual TokenType type() const override { return m_type; }
     std::string to_string() const override {
-        const static std::map<TokenType, std::string> tokStrings = {{TOK_EQUAL, "="},
+        const static std::map<TokenType, std::string> tokStrings = {
+                                                                    {TOK_EQUAL, "="},
                                                                     {TOK_BEGIN, "begin"},
                                                                     {TOK_CLOSE_BRACKET, ")"},
                                                                     {TOK_CONST, "const"},
@@ -116,14 +125,20 @@ class OperatorToken : public Token {
 public:
     OperatorToken(const TokenType type) : m_type(type) {}
     int op_precedence() const override {
-        static const std::map<TokenType, int> prec_map = {{TOK_PLUS, 20},
+        static const std::map<TokenType, int> prec_map = {{TOK_AND, 2},
+                                                          {TOK_PLUS, 20},
                                                           {TOK_MINUS, 20},
                                                           {TOK_MULTIPLY, 40},
                                                           {TOK_EQUAL, 10},
                                                           {TOK_MOD, 40},
-                                                          {TOK_MORE, 10},
+                                                          {TOK_GREATER, 10},
                                                           {TOK_LESS, 10},
-                                                          {TOK_ASSIGN, 5}};
+                                                          {TOK_ASSIGN, 5},
+                                                          {TOK_LESS_OR_EQUAL, 10},
+                                                          {TOK_GREATER_OR_EQUAL, 10},
+                                                          {TOK_NOT_EQUAL, 10},
+                                                          {TOK_DIVIDE, 40},
+                                                          {TOK_OR, 2}};
         return prec_map.at(m_type);
     }
     TokenType type() const override { return m_type; }
@@ -133,9 +148,15 @@ public:
                                                                    {TOK_MULTIPLY, "*"},
                                                                    {TOK_EQUAL, "="},
                                                                    {TOK_MOD, "mod"},
-                                                                   {TOK_MORE, ">"},
+                                                                   {TOK_GREATER, ">"},
                                                                    {TOK_LESS, "<"},
-                                                                   {TOK_ASSIGN, ":="}};
+                                                                   {TOK_ASSIGN, ":="},
+                                                                   {TOK_LESS_OR_EQUAL, "<="},
+                                                                   {TOK_NOT_EQUAL, "<>"},
+                                                                   {TOK_GREATER_OR_EQUAL, "?="},
+                                                                   {TOK_DIVIDE, "/"},
+                                                                   {TOK_AND, "and"},
+                                                                   {TOK_OR, "or"}};
         return opStrings.at(m_type);
     }
 

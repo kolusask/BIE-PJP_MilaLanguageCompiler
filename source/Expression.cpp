@@ -69,7 +69,10 @@ std::string FunctionExpression::to_string() const {
         oss << arg.first << ": " << arg.second;
     }
     static const std::map<TokenType, std::string> dataTypeMap = {{TOK_INTEGER, "integer"}};
-    oss << "): " << dataTypeMap.at(m_type) << ';' << std::endl;
+    if (m_type == TOK_VOID)
+        oss << ");" << std::endl;
+    else
+        oss << "): " << dataTypeMap.at(m_type) << ';' << std::endl;
     if (m_consts)
         oss << m_consts->to_string();
     if (m_vars)

@@ -49,12 +49,12 @@ private:
     llvm::Value* gen_break(llvm::BasicBlock *breakTo, TextPosition position);
     llvm::Value *gen_for(const std::shared_ptr<ForLoopExpression> expr, llvm::BasicBlock *exitTo);
     llvm::Value* gen_exit(llvm::BasicBlock* exitTo, TextPosition position);
-    //llvm::Value* assign(std::string var, ExpressionPointer val, TextPosition pos);
+    llvm::Value* gen_parentheses(const std::shared_ptr<ParenthesesExpression> expr);
 
     llvm::Value* assign(std::string name, llvm::Value *value, TextPosition position);
     llvm::Value *load(const std::string &name, TextPosition position);
     llvm::Value *to_double(llvm::Value *value, llvm::Type *type = nullptr);
-    llvm::Type *get_type(TokenType type, bool ptr = false);
+    llvm::Type *get_type(TokenType type);
     llvm::Value* get_default_value(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
 

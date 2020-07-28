@@ -33,7 +33,7 @@ private:
     std::shared_ptr<VarExpression> parse_var();
     std::shared_ptr<BlockExpression> parse_block();
     std::shared_ptr<ParenthesesExpression> parse_parentheses();
-    std::shared_ptr<FunctionExpression> parse_function();
+    std::shared_ptr<FunctionExpression> parse_function(bool procedure);
     std::shared_ptr<ConditionExpression> parse_condition();
     std::shared_ptr<WhileLoopExpression> parse_while();
     std::shared_ptr<ForLoopExpression> parse_for();

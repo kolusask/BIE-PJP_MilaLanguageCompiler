@@ -241,6 +241,8 @@ public:
 
     std::string to_string() const override;
 
+    ExpressionPointer expression() const { return std::move(m_expression); }
+
 private:
     const ExpressionPointer m_expression;
 };

@@ -116,7 +116,10 @@ std::shared_ptr<TopLevelExpression> Parser::parse_top_level() {
                     varExpr->add(parse_var());
                 break;
             case TOK_FUNCTION:
-                functions.push_back(parse_function());
+                functions.push_back(parse_function(false));
+                break;
+            case TOK_PROCEDURE:
+                functions.push_back(parse_function(true));
                 break;
             case TOK_SEMICOLON:
             case TOK_EOF:
@@ -252,7 +255,7 @@ ExpressionPointer Parser::parse_single() {
     return ExpressionPointer();
 }
 
-std::shared_ptr<FunctionExpression> Parser::parse_function() {
+std::shared_ptr<FunctionExpression> Parser::parse_function(bool procedure) {
     if (next_token()->type() != TOK_IDENTIFIER)
         throw Exception(std::move(position()), "Function name expected");
     std::string name = last_token()->to_string();
@@ -268,19 +271,27 @@ std::shared_ptr<FunctionExpression> Parser::parse_function() {
             for (auto& name : comma_separated)
                 args.push_back({name, type});
             comma_separated.clear();
+            if (next_token()->type() == TOK_CLOSE_BRACKET)
+                break;
+            if (last_token()->type() != TOK_SEMICOLON)
+                throw Exception(std::move(position()), "Expected ';' or ')'");
         } else {
             if (last_token()->type() != TOK_IDENTIFIER)
-                throw Exception(position(), "Expected an argument name or ')'");
+                throw Exception(std::move(position()), "Expected an argument name or ')'");
             comma_separated.push_back(last_token()->to_string());
         }
         next_token();
     }
 
-    if (next_token()->type() != TOK_COLON)
-        throw ExpectedDifferentException(std::move(position()), ":");
-    if (!Syntax::is_datatype(next_token()->type()))
-        throw Exception(std::move(position()), last_token()->to_string() + "is not a data type");
-    TokenType type = last_token()->type();
+    TokenType type;
+    if (!procedure) {
+        if (next_token()->type() != TOK_COLON)
+            throw ExpectedDifferentException(std::move(position()), ":");
+        if (!Syntax::is_datatype(next_token()->type()))
+            throw Exception(std::move(position()), last_token()->to_string() + "is not a data type");
+        type = last_token()->type();
+    } else
+        type = TOK_VOID;
     if (next_token()->type() != TOK_SEMICOLON)
         throw ExpectedDifferentException(std::move(position()), ";");
 
@@ -310,6 +321,8 @@ std::shared_ptr<FunctionExpression> Parser::parse_function() {
     next_token();
     return std::make_shared<FunctionExpression>(name, type, args, consts, vars, body, std::move(position()));
 }
+
+
 
 std::shared_ptr<ConditionExpression> Parser::parse_condition() {
     next_token();
@@ -398,4 +411,5 @@ std::shared_ptr<ExitExpression> Parser::parse_exit() {
     next_token();
     return std::make_shared<ExitExpression>(std::move(position()));
 }
+
 

@@ -47,6 +47,8 @@ llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicB
             return std::move(gen_for(std::static_pointer_cast<ForLoopExpression>(expr), exitTo));
         case EXPR_EXIT:
             return std::move(gen_exit(exitTo, expr->position()));
+        case EXPR_PARENTHESES:
+            return std::move(gen_parentheses(std::static_pointer_cast<ParenthesesExpression>(expr)));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -88,6 +90,22 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
             return m_builder->CreateMul(left, right, "multmp");
         case TOK_LESS:
             return m_builder->CreateICmpSLT(left, right, "cmptmp");
+        case TOK_LESS_OR_EQUAL:
+            return m_builder->CreateICmpSLE(left, right, "cmptmp");
+        case TOK_GREATER:
+            return m_builder->CreateICmpSGT(left, right, "cmptmp");
+        case TOK_GREATER_OR_EQUAL:
+            return m_builder->CreateICmpSGE(left, right, "cmptmp");
+        case TOK_MOD:
+            return m_builder->CreateSRem(left, right, "cmptmp");
+        case TOK_AND:
+            return m_builder->CreateAnd(left, right, "cmptmp");
+        case TOK_OR:
+            return m_builder->CreateOr(left, right, "cmptmp");
+        case TOK_NOT_EQUAL:
+            return m_builder->CreateICmpNE(left, right, "cmptmp");
+        case TOK_EQUAL:
+            return m_builder->CreateICmpEQ(left, right, "cmptmp");
         default: throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 
@@ -130,27 +148,21 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
         for (const auto &arg : expr->args())
             args.push_back(generate(arg, nullptr, nullptr));
     }
-    auto call = m_builder->CreateCall(function, args, "calltmp");
+    auto call = m_builder->CreateCall(function, args,
+            function->getReturnType() == m_builder->getVoidTy() ? "" : "calltmp");
     if (expr->name() == "readln")
         assign("_extra", m_builder->getInt32(0), expr->position());
     return call;
 }
 
-llvm::Type * CodeGenerator::get_type(TokenType type, bool ptr) {
-    if (ptr) {
-        switch (type) {
-            case TOK_INTEGER:
-                return llvm::Type::getInt32PtrTy(m_context);
-            default:
-                return nullptr;
-        }
-    } else {
-        switch (type) {
-            case TOK_INTEGER:
-                return llvm::Type::getInt32Ty(m_context);
-            default:
-                return nullptr;
-        }
+llvm::Type * CodeGenerator::get_type(TokenType type) {
+    switch (type) {
+        case TOK_INTEGER:
+            return llvm::Type::getInt32Ty(m_context);
+        case TOK_VOID:
+            return llvm::Type::getVoidTy(m_context);
+        default:
+            return nullptr;
     }
 }
 
@@ -169,8 +181,8 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     // Function type
     std::vector<llvm::Type*> argTypes;
     for (auto& tt : expr->arg_types())
-        argTypes.push_back(get_type(tt, false));
-    auto retType = get_type(expr->return_type(), false);
+        argTypes.push_back(get_type(tt));
+    auto retType = get_type(expr->return_type());
     auto functionType = llvm::FunctionType::get(retType, argTypes, false);
 
     auto function = llvm::Function::Create(
@@ -196,7 +208,8 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     auto oldVars = m_variables;
     for (auto& v : expr->vars())
         m_variables[v.first] = create_alloca(function, v.first, get_type(v.second));
-    m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
+    if (expr->return_type() != TOK_VOID)
+        m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
 
 
     // body
@@ -207,7 +220,7 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     m_builder->CreateBr(retBlock);
     m_builder->SetInsertPoint(retBlock);
 
-    auto retVal = m_builder->CreateLoad(m_variables[expr->name()]);
+    auto retVal = expr->return_type() == TOK_VOID ? nullptr : m_builder->CreateLoad(m_variables[expr->name()]);
 
     m_builder->CreateRet(retVal);
 
@@ -460,6 +473,10 @@ llvm::Value *CodeGenerator::gen_exit(llvm::BasicBlock *exitTo, TextPosition posi
     if (exitTo)
         return m_builder->CreateBr(exitTo);
     throw Exception("");
+}
+
+llvm::Value *CodeGenerator::gen_parentheses(std::shared_ptr<ParenthesesExpression> expr) {
+    return generate(expr->expression());
 }
 
 
