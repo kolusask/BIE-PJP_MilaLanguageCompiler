@@ -16,7 +16,6 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
-//#include <cstdlib>
 
 llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicBlock *breakTo = nullptr,
                                       llvm::BasicBlock *exitTo=nullptr) {
@@ -157,6 +156,12 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
             function = m_module->getFunction("writeInt");
         else if (arg->getType() == get_type(TOK_DOUBLE))
             function = m_module->getFunction("writeDouble");
+    } else if (expr->name() == "readln") {
+        auto arg = generate(*expr->args().cbegin());
+        if (arg->getType() == get_type(TOK_INTEGER))
+            function = m_module->getFunction("readInt");
+        else if (arg->getType() == get_type(TOK_DOUBLE))
+            function = m_module->getFunction("readDouble");
     }
     if (!function)
         throw Exception(expr->position(), "Function is not defined: " + expr->name());
@@ -211,12 +216,10 @@ llvm::Type * CodeGenerator::get_type(TokenType type) {
     }
 }
 
-llvm::Value *CodeGenerator::get_default_value(TokenType type) {
+llvm::Constant * CodeGenerator::get_default_value(TokenType type) {
     switch (type) {
-        case TOK_INTEGER: {
-            static auto intZero = llvm::ConstantInt::get(m_context, llvm::APSInt(0));
-            return intZero;
-        }
+        case TOK_INTEGER: return m_builder->getInt32(0);
+        case TOK_DOUBLE: return llvm::ConstantFP::get(m_builder->getDoubleTy(), 0.);
         default:
             return nullptr;
     }
@@ -338,17 +341,16 @@ void CodeGenerator::print() const {
 }
 
 llvm::Value *CodeGenerator::generate_code() {
-
-    auto zero = m_builder->getInt32(0);
     for (auto& c : m_tree->consts())
         m_constants[c.first] = llvm::dyn_cast<llvm::Constant>(generate(c.second, nullptr, nullptr));
     for (auto& v : m_tree->vars()) {
-        auto global = new llvm::GlobalVariable(*m_module, get_type(v.second), false,
-                                               llvm::GlobalVariable::ExternalLinkage, zero, v.first);
+        auto global = new llvm::GlobalVariable(
+                *m_module, get_type(v.second), false, llvm::GlobalVariable::ExternalLinkage,
+                get_default_value(v.second), v.first);
         m_globals[v.first] = global;
     }
     auto global = new llvm::GlobalVariable(*m_module, get_type(TOK_INTEGER), false,
-                                           llvm::GlobalVariable::ExternalLinkage, zero, "_extra");
+                                           llvm::GlobalVariable::ExternalLinkage, m_builder->getInt32(0), "_extra");
     m_globals["_extra"] = global;
 
     for (const auto& fun : m_tree->functions())
@@ -455,16 +457,25 @@ void CodeGenerator::add_standard_functions() {
             "scanf", m_module.get());
 
     // readln(int)
-    auto readlnType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
-            {llvm::Type::getInt32PtrTy(m_context)}, false);
-    auto readlnFun = llvm::Function::Create(readlnType, llvm::Function::ExternalLinkage,
-            "readln", m_module.get());
-    auto readlnBlk = llvm::BasicBlock::Create(m_context, "start", readlnFun);
-    m_builder->SetInsertPoint(readlnBlk);
-    //auto ptr = m_builder->CreateIntToPtr(readlnFun->getArg(0), llvm::Type::getInt8PtrTy(m_context));
-    //auto ptr = m_builder->CreateLoad(m_builder->CreateIntToPtr(readlnFun->getArg(0), llvm::Type::getInt8PtrTy(m_context)), "ptr");
-    llvm::Value* readStr = m_builder->CreateGlobalStringPtr("%d[^\n]");
-    m_builder->CreateCall(scanfType, scanfFun, {readStr, readlnFun->getArg(0)});
+    auto readIntType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+                                               {llvm::Type::getInt32PtrTy(m_context)}, false);
+    auto readIntFun = llvm::Function::Create(readIntType, llvm::Function::ExternalLinkage,
+                                             "readInt", m_module.get());
+    auto readIntBlk = llvm::BasicBlock::Create(m_context, "start", readIntFun);
+    m_builder->SetInsertPoint(readIntBlk);
+    llvm::Value* readIntStr = m_builder->CreateGlobalStringPtr("%d[^\n]");
+    m_builder->CreateCall(scanfType, scanfFun, {readIntStr, readIntFun->getArg(0)});
+    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
+
+    // readln(double)
+    auto readDoubleType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+                                                  {llvm::Type::getDoublePtrTy(m_context)}, false);
+    auto readDoubleFun = llvm::Function::Create(readDoubleType, llvm::Function::ExternalLinkage,
+                                                "readDouble", m_module.get());
+    auto readDoubleBlk = llvm::BasicBlock::Create(m_context, "start", readDoubleFun);
+    m_builder->SetInsertPoint(readDoubleBlk);
+    llvm::Value* readDoubleStr = m_builder->CreateGlobalStringPtr("%lf[^\n]");
+    m_builder->CreateCall(scanfType, scanfFun, {readDoubleStr, readDoubleFun->getArg(0)});
     m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
 }
 

@@ -56,7 +56,7 @@ private:
     llvm::Value *load(const std::string &name, TextPosition position);
     llvm::Value *to_double(llvm::Value *value, llvm::Type *type = nullptr);
     llvm::Type *get_type(TokenType type);
-    llvm::Value* get_default_value(TokenType type);
+    llvm::Constant * get_default_value(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
 
     llvm::LLVMContext m_context;
