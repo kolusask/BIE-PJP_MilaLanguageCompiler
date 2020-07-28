@@ -19,6 +19,7 @@ enum ExpressionType {
     EXPR_ASSIGN,
     EXPR_BINARY_OPERATION,
     EXPR_BLOCK,
+    EXPR_BREAK,
     EXPR_CALL,
     EXPR_CONDITION,
     EXPR_CONST,
@@ -436,7 +437,7 @@ public:
 
     std::string to_string() const override;
 
-public:
+private:
     const std::string m_counter;
     const ExpressionPointer m_start;
     const ExpressionPointer m_finish;
@@ -444,6 +445,15 @@ public:
     const ExpressionPointer m_body;
 };
 
+
+class BreakExpression : public Expression {
+public:
+    BreakExpression(const TextPosition tp) : Expression(std::move(tp)) {}
+    bool can_be_operand() const override { return false; }
+    ExpressionType type() const override { return EXPR_BREAK; }
+
+    std::string to_string() const override;
+};
 
 
 #endif //BIE_PJP_MILALANGUAGECOMPILER_EXPRESSION_H

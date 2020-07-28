@@ -241,6 +241,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_for());
         case TOK_MINUS:
             return std::move(parse_minus());
+        case TOK_BREAK:
+            return std::move(parse_break());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -382,5 +384,10 @@ std::shared_ptr<BinaryOperationExpression> Parser::parse_minus() {
 
 std::shared_ptr<TopLevelExpression> Parser::get_tree() const {
     return m_tree;
+}
+
+std::shared_ptr<BreakExpression> Parser::parse_break() {
+    next_token();
+    return std::make_shared<BreakExpression>(std::move(position()));
 }
 

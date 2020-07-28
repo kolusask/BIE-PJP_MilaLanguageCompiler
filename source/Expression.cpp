@@ -123,3 +123,7 @@ std::string DoubleExpression::to_string() const {
 std::string AssignExpression::to_string() const {
     return m_name + ":=" + m_value->to_string();
 }
+
+std::string BreakExpression::to_string() const {
+    return "break";
+}

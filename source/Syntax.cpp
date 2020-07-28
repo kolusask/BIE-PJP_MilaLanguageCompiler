@@ -32,6 +32,7 @@ TokenType Syntax::check_character(const char ch) {
 
 TokenType Syntax::check_keyword(const std::string &word) {
     static const std::map<std::string, TokenType> keyWords = {{"begin", TOK_BEGIN},
+                                                              {"break", TOK_BREAK},
                                                               {"const", TOK_CONST},
                                                               {"end", TOK_END},
                                                               {"program", TOK_PROGRAM},
