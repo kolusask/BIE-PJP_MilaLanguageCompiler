@@ -77,11 +77,12 @@ std::shared_ptr<VarExpression> Parser::parse_var() {
                 if (next_token()->type() != TOK_SEMICOLON)
                     throw ExpectedDifferentException(std::move(position()), ";");
                 next_token();
+                break;
             default:
                 return expr;
         }
     }
-    return nullptr;
+    return expr;
 }
 
 std::shared_ptr<Token> Parser::last_token() const {
