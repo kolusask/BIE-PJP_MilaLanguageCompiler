@@ -437,6 +437,12 @@ public:
 
     std::string to_string() const override;
 
+    const std::string& counter() const { return m_counter; }
+    ExpressionPointer start() const { return std::move(m_start); }
+    ExpressionPointer finish() const { return std::move(m_finish); }
+    bool down() const { return m_down; }
+    ExpressionPointer body() const { return std::move(m_body); }
+
 private:
     const std::string m_counter;
     const ExpressionPointer m_start;

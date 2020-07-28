@@ -41,6 +41,8 @@ llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicB
             return std::move(gen_break(breakTo, expr->position()));
         case EXPR_BLOCK:
             return std::move(gen_block(std::static_pointer_cast<BlockExpression>(expr), breakTo));
+        case EXPR_FOR_LOOP:
+            return std::move(gen_for(std::static_pointer_cast<ForLoopExpression>(expr)));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -198,7 +200,7 @@ llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const s
 }
 
 llvm::Value *CodeGenerator::gen_while(std::shared_ptr<WhileLoopExpression> expr) {
-    auto condValue = generate(expr->condition(), nullptr);
+    auto condValue = generate(expr->condition());
 
     auto function = m_builder->GetInsertBlock()->getParent();
     auto goBlock = llvm::BasicBlock::Create(m_context, "go", function);
@@ -380,6 +382,42 @@ llvm::Value *CodeGenerator::gen_break(llvm::BasicBlock *breakTo, TextPosition po
     if (breakTo)
         return m_builder->CreateBr(breakTo);
     throw Exception(position, "Break statement outside of loop");
+}
+
+llvm::Value *CodeGenerator::gen_for(std::shared_ptr<ForLoopExpression> expr) {
+    auto function = m_builder->GetInsertBlock()->getParent();
+    auto controlBlock = llvm::BasicBlock::Create(m_context, "control", function);
+    auto bodyBlock = llvm::BasicBlock::Create(m_context, "for_body", function);
+    auto afterBlock = llvm::BasicBlock::Create(m_context, "after", function);
+
+    auto start = generate(expr->start());
+    auto finish = generate(expr->finish());
+    auto count = m_variables[expr->counter()];
+    if (!count)
+        throw Exception(expr->position(), "Unknown counter variable: " + expr->counter());
+    m_builder->CreateStore(start, count);
+    m_builder->CreateBr(controlBlock);
+
+    m_builder->SetInsertPoint(controlBlock);
+    auto countValue = m_builder->CreateLoad(count, "count");
+    if (countValue->getType() != llvm::Type::getInt32Ty(m_context))
+        throw Exception(expr->position(), "For-loop counter must be an integer");
+    auto stop = m_builder->CreateICmpEQ(countValue, finish, "stop");
+    m_builder->CreateCondBr(stop, afterBlock, bodyBlock);
+
+    m_builder->SetInsertPoint(bodyBlock);
+    generate(expr->body(), afterBlock);
+    static auto one = llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 1);
+    llvm::Value* newCount;
+    if (expr->down())
+        newCount = m_builder->CreateSub(countValue, one, "newcount");
+    else
+        newCount = m_builder->CreateAdd(countValue, one, "newcount");
+    m_builder->CreateStore(newCount, count);
+    m_builder->CreateBr(controlBlock);
+
+    m_builder->SetInsertPoint(afterBlock);
+    return function;
 }
 
 

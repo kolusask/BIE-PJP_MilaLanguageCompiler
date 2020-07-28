@@ -45,6 +45,7 @@ private:
     llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> ep);
     llvm::Value* gen_while(const std::shared_ptr<WhileLoopExpression> expr);
     llvm::Value* gen_break(llvm::BasicBlock *breakTo, TextPosition position);
+    llvm::Value* gen_for(const std::shared_ptr<ForLoopExpression> expr);
     //llvm::Value* gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
 
     llvm::Value *to_double(llvm::Value *value, llvm::Type *type = nullptr);
