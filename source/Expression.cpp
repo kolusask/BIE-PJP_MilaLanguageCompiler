@@ -77,7 +77,8 @@ std::string FunctionExpression::to_string() const {
         oss << m_consts->to_string();
     if (m_vars)
         oss << m_vars->to_string();
-    oss << m_body->to_string() << ';' << std::endl;
+    if (m_body)
+        oss << m_body->to_string() << ';' << std::endl;
     return oss.str();
 }
 

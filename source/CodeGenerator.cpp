@@ -227,52 +227,61 @@ llvm::Constant * CodeGenerator::get_default_value(TokenType type) {
 
 llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpression> expr) {
     // Function type
-    std::vector<llvm::Type*> argTypes;
-    for (auto& tt : expr->arg_types())
+    std::vector<llvm::Type *> argTypes;
+    for (auto &tt : expr->arg_types())
         argTypes.push_back(get_type(tt));
     auto retType = get_type(expr->return_type());
     auto functionType = llvm::FunctionType::get(retType, argTypes, false);
-
-    auto function = llvm::Function::Create(
-            functionType, llvm::Function::ExternalLinkage, expr->name(), m_module.get());
-    auto body = llvm::BasicBlock::Create(m_context, "entry", function);
-    m_builder->SetInsertPoint(body);
+    auto function = m_module->getFunction(expr->name());
+    bool writeBody = false;
+    if (function) {
+        if (function->getFunctionType() != functionType)
+            throw Exception(std::move(expr->position()), "Function redefinition: " + expr->name());
+        writeBody = true;
+    } else {
+        function = llvm::Function::Create(
+                functionType, llvm::Function::ExternalLinkage, expr->name(), m_module.get());
+    }
+        if (expr->body())
+            writeBody = true;
     auto argNames = expr->arg_names();
     size_t i = 0;
-    for (auto& arg : function->args())
+    for (auto &arg : function->args())
         arg.setName(argNames[i++]);
-    m_variables.clear();
-    for (auto& arg : function->args()) {
-        auto alloca = create_alloca(function, arg.getName(), arg.getType());
-        m_builder->CreateStore(&arg, alloca);
-        m_variables[std::string(arg.getName())] = alloca;
-    }
-
     // Vars and consts
-    auto oldConsts = m_constants;
-    for (auto& c : expr->consts())
-        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
+    if (writeBody) {
+        auto body = llvm::BasicBlock::Create(m_context, "entry", function);
+        m_builder->SetInsertPoint(body);
+        m_variables.clear();
+        for (auto& arg : function->args()) {
+            auto alloca = create_alloca(function, arg.getName(), arg.getType());
+            m_builder->CreateStore(&arg, alloca);
+            m_variables[std::string(arg.getName())] = alloca;
+        }
+        auto oldConsts = m_constants;
+        for (auto& c : expr->consts())
+            m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
 
-    auto oldVars = m_variables;
-    for (auto& v : expr->vars())
-        m_variables[v.first] = create_alloca(function, v.first, get_type(v.second));
-    if (expr->return_type() != TOK_VOID)
-        m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
+        auto oldVars = m_variables;
+        for (auto& v : expr->vars())
+            m_variables[v.first] = create_alloca(function, v.first, get_type(v.second));
+        if (expr->return_type() != TOK_VOID)
+            m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
 
 
     // body
-    auto retBlock = llvm::BasicBlock::Create(m_context, "return", function);
-    m_builder->SetInsertPoint(body);
+        auto retBlock = llvm::BasicBlock::Create(m_context, "return", function);
+        m_builder->SetInsertPoint(body);
 
-    generate(expr->body(), nullptr, retBlock);
-    m_builder->CreateBr(retBlock);
-    m_builder->SetInsertPoint(retBlock);
+        generate(expr->body(), nullptr, retBlock);
+        m_builder->CreateBr(retBlock);
+        m_builder->SetInsertPoint(retBlock);
 
-    auto retVal = expr->return_type() == TOK_VOID ? nullptr : m_builder->CreateLoad(m_variables[expr->name()]);
+        auto retVal = expr->return_type() == TOK_VOID ? nullptr : m_builder->CreateLoad(m_variables[expr->name()]);
 
-    m_builder->CreateRet(retVal);
-
-    m_constants = oldConsts;
+        m_builder->CreateRet(retVal);
+        m_constants = oldConsts;
+    }
 
     return function;
 }

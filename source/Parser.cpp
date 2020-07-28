@@ -311,6 +311,12 @@ std::shared_ptr<FunctionExpression> Parser::parse_function(bool procedure) {
             case TOK_BEGIN:
                 parsingLocals = false;
                 break;
+            case TOK_FORWARD:
+                if (next_token()->type() != TOK_SEMICOLON)
+                    throw ExpectedDifferentException(std::move(position()), ";");
+                next_token();
+                return std::make_shared<FunctionExpression>(
+                        name, type, args, consts, vars, nullptr, std::move(position()));
             default:
                 throw UnexpectedTokenException(std::move(position()), last_token()->to_string());
         }

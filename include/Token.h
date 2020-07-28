@@ -30,6 +30,7 @@ enum TokenType {
     TOK_EQUAL,
     TOK_EXIT,
     TOK_FOR,
+    TOK_FORWARD,
     TOK_FUNCTION,
     TOK_IDENTIFIER,
     TOK_IF,
@@ -79,7 +80,8 @@ public:
                                                                     {TOK_OPEN_BRACKET, ")"},
                                                                     {TOK_PROGRAM, "program"},
                                                                     {TOK_SEMICOLON, ";"},
-                                                                    {TOK_COMMA, ","}};
+                                                                    {TOK_COMMA, ","},
+                                                                    {TOK_FORWARD, "forward"}};
         return tokStrings.at(m_type);
     }
 
