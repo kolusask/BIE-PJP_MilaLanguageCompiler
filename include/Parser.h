@@ -39,6 +39,7 @@ private:
     std::shared_ptr<ForLoopExpression> parse_for();
     std::shared_ptr<BinaryOperationExpression> parse_minus();
     std::shared_ptr<BreakExpression> parse_break();
+    std::shared_ptr<ExitExpression> parse_exit();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();

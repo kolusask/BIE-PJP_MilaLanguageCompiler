@@ -26,6 +26,7 @@ enum TokenType {
     TOK_ELSE,
     TOK_EOF,
     TOK_EQUAL,
+    TOK_EXIT,
     TOK_FOR,
     TOK_FUNCTION,
     TOK_IDENTIFIER,

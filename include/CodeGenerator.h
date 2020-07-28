@@ -27,7 +27,7 @@ public:
             m_tree(std::move(tree)) {
         add_standard_functions();
     }
-    llvm::Value *generate(const ExpressionPointer expr, llvm::BasicBlock *breakTo);
+    llvm::Value *generate(const ExpressionPointer expr, llvm::BasicBlock *breakTo, llvm::BasicBlock *exitTo);
     llvm::Value* generate_code();
     void write_output(const char* fileName);
     void print() const;
@@ -35,17 +35,20 @@ public:
 private:
     void add_standard_functions();
 
-    llvm::Value* gen_block(const std::shared_ptr<BlockExpression> expr, llvm::BasicBlock *breakTo = nullptr);
+    llvm::Value *gen_block(const std::shared_ptr<BlockExpression> expr, llvm::BasicBlock *breakTo,
+                           llvm::BasicBlock *exitTo);
     llvm::Value* gen_integer(const std::shared_ptr<IntegerExpression> ep);
     llvm::Value* gen_identifier(const std::shared_ptr<IdentifierExpression> ep);
     llvm::Value* gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep);
     llvm::Value* gen_call(const std::shared_ptr<CallExpression> ep);
     llvm::Value* gen_function(const std::shared_ptr<FunctionExpression> ep);
-    llvm::Value* gen_condition(const std::shared_ptr<ConditionExpression> ep, llvm::BasicBlock *breakTo = nullptr);
+    llvm::Value *gen_condition(const std::shared_ptr<ConditionExpression> ep, llvm::BasicBlock *breakTo,
+                               llvm::BasicBlock *exitTo);
     llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> ep);
-    llvm::Value* gen_while(const std::shared_ptr<WhileLoopExpression> expr);
+    llvm::Value *gen_while(const std::shared_ptr<WhileLoopExpression> expr, llvm::BasicBlock *exitTo);
     llvm::Value* gen_break(llvm::BasicBlock *breakTo, TextPosition position);
-    llvm::Value* gen_for(const std::shared_ptr<ForLoopExpression> expr);
+    llvm::Value *gen_for(const std::shared_ptr<ForLoopExpression> expr, llvm::BasicBlock *exitTo);
+    llvm::Value* gen_exit(llvm::BasicBlock* exitTo, TextPosition position);
     //llvm::Value* assign(std::string var, ExpressionPointer val, TextPosition pos);
 
     llvm::Value* assign(std::string name, llvm::Value *value, TextPosition position);

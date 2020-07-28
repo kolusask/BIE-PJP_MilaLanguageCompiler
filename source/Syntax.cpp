@@ -46,7 +46,8 @@ TokenType Syntax::check_keyword(const std::string &word) {
                                                               {"do", TOK_DO},
                                                               {"for", TOK_FOR},
                                                               {"to", TOK_TO},
-                                                              {"downto", TOK_DOWNTO}};
+                                                              {"downto", TOK_DOWNTO},
+                                                              {"exit", TOK_EXIT}};
     auto it = keyWords.find(word);
     if (it != keyWords.end())
         return it->second;

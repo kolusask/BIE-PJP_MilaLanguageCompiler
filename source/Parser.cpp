@@ -243,6 +243,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_minus());
         case TOK_BREAK:
             return std::move(parse_break());
+        case TOK_EXIT:
+            return std::move(parse_exit());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -390,5 +392,10 @@ std::shared_ptr<TopLevelExpression> Parser::get_tree() const {
 std::shared_ptr<BreakExpression> Parser::parse_break() {
     next_token();
     return std::make_shared<BreakExpression>(std::move(position()));
+}
+
+std::shared_ptr<ExitExpression> Parser::parse_exit() {
+    next_token();
+    return std::make_shared<ExitExpression>(std::move(position()));
 }
 

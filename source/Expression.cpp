@@ -127,3 +127,7 @@ std::string AssignExpression::to_string() const {
 std::string BreakExpression::to_string() const {
     return "break";
 }
+
+std::string ExitExpression::to_string() const {
+    return "exit";
+}

@@ -18,7 +18,8 @@
 
 //#include <cstdlib>
 
-llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicBlock *breakTo = nullptr) {
+llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicBlock *breakTo = nullptr,
+                                      llvm::BasicBlock *exitTo=nullptr) {
     auto type = expr->type();
     switch(expr->type()) {
         case EXPR_INTEGER:
@@ -32,17 +33,20 @@ llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicB
         case EXPR_FUNCTION:
             return std::move(gen_function(std::move(std::static_pointer_cast<FunctionExpression>(expr))));
         case EXPR_CONDITION:
-            return std::move(gen_condition(std::move(std::static_pointer_cast<ConditionExpression>(expr)), breakTo));
+            return std::move(gen_condition(std::move(std::static_pointer_cast<ConditionExpression>(expr)), breakTo,
+                                           exitTo));
         case EXPR_ASSIGN:
             return std::move(gen_assign(std::move(std::static_pointer_cast<AssignExpression>(expr))));
         case EXPR_WHILE_LOOP:
-            return std::move(gen_while(std::move(std::static_pointer_cast<WhileLoopExpression>(expr))));
+            return std::move(gen_while(std::move(std::static_pointer_cast<WhileLoopExpression>(expr)), exitTo));
         case EXPR_BREAK:
             return std::move(gen_break(breakTo, expr->position()));
         case EXPR_BLOCK:
-            return std::move(gen_block(std::static_pointer_cast<BlockExpression>(expr), breakTo));
+            return std::move(gen_block(std::static_pointer_cast<BlockExpression>(expr), breakTo, exitTo));
         case EXPR_FOR_LOOP:
-            return std::move(gen_for(std::static_pointer_cast<ForLoopExpression>(expr)));
+            return std::move(gen_for(std::static_pointer_cast<ForLoopExpression>(expr), exitTo));
+        case EXPR_EXIT:
+            return std::move(gen_exit(exitTo, expr->position()));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -72,8 +76,8 @@ llvm::Value * CodeGenerator::to_double(llvm::Value *value, llvm::Type *type) {
 llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
     auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
 
-    auto left = generate(expr->left(), nullptr);
-    auto right = generate(expr->right(), nullptr);
+    auto left = generate(expr->left(), nullptr, nullptr);
+    auto right = generate(expr->right(), nullptr, nullptr);
 
     switch(expr->op()->type()) {
         case TOK_PLUS:
@@ -124,7 +128,7 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
             throw Exception(arg->position(), "Can only read into a variable");
     } else {
         for (const auto &arg : expr->args())
-            args.push_back(generate(arg, nullptr));
+            args.push_back(generate(arg, nullptr, nullptr));
     }
     auto call = m_builder->CreateCall(function, args, "calltmp");
     if (expr->name() == "readln")
@@ -171,8 +175,8 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
 
     auto function = llvm::Function::Create(
             functionType, llvm::Function::ExternalLinkage, expr->name(), m_module.get());
-    auto block = llvm::BasicBlock::Create(m_context, "entry", function);
-    m_builder->SetInsertPoint(block);
+    auto body = llvm::BasicBlock::Create(m_context, "entry", function);
+    m_builder->SetInsertPoint(body);
     auto argNames = expr->arg_names();
     size_t i = 0;
     for (auto& arg : function->args())
@@ -187,19 +191,24 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     // Vars and consts
     auto oldConsts = m_constants;
     for (auto& c : expr->consts())
-        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
+        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
 
     auto oldVars = m_variables;
     for (auto& v : expr->vars())
         m_variables[v.first] = create_alloca(function, v.first, get_type(v.second));
     m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
 
-    // body
-    m_builder->SetInsertPoint(block);
 
-    generate(expr->body(), nullptr);
+    // body
+    auto retBlock = llvm::BasicBlock::Create(m_context, "return", function);
+    m_builder->SetInsertPoint(body);
+
+    generate(expr->body(), nullptr, retBlock);
+    m_builder->CreateBr(retBlock);
+    m_builder->SetInsertPoint(retBlock);
 
     auto retVal = m_builder->CreateLoad(m_variables[expr->name()]);
+
     m_builder->CreateRet(retVal);
 
     m_constants = oldConsts;
@@ -212,29 +221,30 @@ llvm::AllocaInst *CodeGenerator::create_alloca(llvm::Function *function, const s
     return builder.CreateAlloca(type, 0, name.c_str());
 }
 
-llvm::Value *CodeGenerator::gen_while(std::shared_ptr<WhileLoopExpression> expr) {
-    auto condValue = generate(expr->condition());
+llvm::Value *CodeGenerator::gen_while(const std::shared_ptr<WhileLoopExpression> expr, llvm::BasicBlock *exitTo) {
+    auto condValue = generate(expr->condition(), nullptr, nullptr);
 
     auto function = m_builder->GetInsertBlock()->getParent();
     auto goBlock = llvm::BasicBlock::Create(m_context, "go", function);
     auto afterBlock = llvm::BasicBlock::Create(m_context, "after");
 
-    auto whileBr = m_builder->CreateCondBr(condValue, goBlock, afterBlock);
+    m_builder->CreateCondBr(condValue, goBlock, afterBlock);
 
     m_builder->SetInsertPoint(goBlock);
 
-    generate(expr->body(), afterBlock);
-    condValue = generate(expr->condition());
+    generate(expr->body(), afterBlock, exitTo);
+    condValue = generate(expr->condition(), nullptr, nullptr);
     m_builder->CreateCondBr(condValue, goBlock, afterBlock);
     function->getBasicBlockList().push_back(afterBlock);
     m_builder->SetInsertPoint(afterBlock);
     return function;
 }
 
-llvm::Value * CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep, llvm::BasicBlock *breakTo) {
+llvm::Value * CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep, llvm::BasicBlock *breakTo,
+                                           llvm::BasicBlock *exitTo) {
     auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
-    auto condValue = generate(expr->condition(), nullptr);
+    auto condValue = generate(expr->condition(), nullptr, nullptr);
 
     auto function = m_builder->GetInsertBlock()->getParent();
     // blocks
@@ -245,16 +255,15 @@ llvm::Value * CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpres
     m_builder->CreateCondBr(condValue, thenBlock, elseBlock);
     // then
     m_builder->SetInsertPoint(thenBlock);
-    generate(expr->thenBody(), breakTo);
+    generate(expr->thenBody(), breakTo, exitTo);
     m_builder->CreateBr(mergeBlock);
     thenBlock = m_builder->GetInsertBlock();
     // else
     function->getBasicBlockList().push_back(elseBlock);
     m_builder->SetInsertPoint(elseBlock);
     if (expr->elseBody())
-        generate(expr->elseBody(), breakTo);
+        generate(expr->elseBody(), breakTo, exitTo);
     m_builder->CreateBr(mergeBlock);
-    elseBlock = m_builder->GetInsertBlock();
     // merge
     function->getBasicBlockList().push_back(mergeBlock);
     m_builder->SetInsertPoint(mergeBlock);
@@ -262,7 +271,7 @@ llvm::Value * CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpres
 }
 
 llvm::Value* CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> expr) {
-    return assign(std::move(expr->name()), generate(std::move(expr->value())), expr->position());
+    return assign(std::move(expr->name()), generate(std::move(expr->value()), nullptr, nullptr), expr->position());
 }
 
 
@@ -274,7 +283,7 @@ llvm::Value *CodeGenerator::generate_code() {
 
     auto zero = m_builder->getInt32(0);
     for (auto& c : m_tree->consts())
-        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr));
+        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));
     for (auto& v : m_tree->vars()) {
         auto global = new llvm::GlobalVariable(*m_module, get_type(v.second), false,
                                                llvm::GlobalVariable::ExternalLinkage, zero, v.first);
@@ -289,26 +298,22 @@ llvm::Value *CodeGenerator::generate_code() {
 
     auto fType = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context), {}, false);
     auto function = llvm::Function::Create(fType, llvm::Function::ExternalLinkage, "main", m_module.get());
-    llvm::BasicBlock* block = llvm::BasicBlock::Create(m_context, "start", function);
-    m_builder->SetInsertPoint(block);
-        //m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
-    gen_block(m_tree->body());
+    auto body = llvm::BasicBlock::Create(m_context, "start", function);
+    m_builder->SetInsertPoint(body);
+    auto exitBlock = llvm::BasicBlock::Create(m_context, "exit", function);
+    gen_block(m_tree->body(), nullptr, exitBlock);
+    m_builder->CreateBr(exitBlock);
+    m_builder->SetInsertPoint(exitBlock);
     m_builder->CreateRet(nullptr);
     return function;
 }
 
-llvm::Value *CodeGenerator::gen_block(const std::shared_ptr<BlockExpression> expr, llvm::BasicBlock *breakTo) {
+llvm::Value *CodeGenerator::gen_block(const std::shared_ptr<BlockExpression> expr, llvm::BasicBlock *breakTo,
+                                      llvm::BasicBlock *exitTo) {
     for (auto& e : expr->body())
-        generate(e, breakTo);
+        generate(e, breakTo, exitTo);
     return nullptr;
 }
-
-
-
-//llvm::Value* CodeGenerator::assign(const std::string &name, ExpressionPointer value) {
-//    return llvm::Value*(__cxx11::list());
-//}
-
 
 void CodeGenerator::write_output(const char *fileName) {
     // Initialize the target registry etc
@@ -400,14 +405,14 @@ llvm::Value *CodeGenerator::gen_break(llvm::BasicBlock *breakTo, TextPosition po
     throw Exception(position, "Break statement outside of loop");
 }
 
-llvm::Value *CodeGenerator::gen_for(std::shared_ptr<ForLoopExpression> expr) {
+llvm::Value *CodeGenerator::gen_for(const std::shared_ptr<ForLoopExpression> expr, llvm::BasicBlock *exitTo) {
     auto function = m_builder->GetInsertBlock()->getParent();
     auto controlBlock = llvm::BasicBlock::Create(m_context, "control", function);
     auto bodyBlock = llvm::BasicBlock::Create(m_context, "for_body", function);
     auto afterBlock = llvm::BasicBlock::Create(m_context, "after", function);
 
-    auto start = generate(expr->start());
-    auto finish = generate(expr->finish());
+    auto start = generate(expr->start(), nullptr, nullptr);
+    auto finish = generate(expr->finish(), nullptr, nullptr);
     assign(expr->counter(), start, expr->position());
     m_builder->CreateBr(controlBlock);
 
@@ -419,7 +424,7 @@ llvm::Value *CodeGenerator::gen_for(std::shared_ptr<ForLoopExpression> expr) {
     m_builder->CreateCondBr(stop, afterBlock, bodyBlock);
 
     m_builder->SetInsertPoint(bodyBlock);
-    generate(expr->body(), afterBlock);
+    generate(expr->body(), afterBlock, exitTo);
     static auto one = llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 1);
     llvm::Value* newCount;
     if (expr->down())
@@ -449,6 +454,12 @@ llvm::Value *CodeGenerator::load(const std::string &name, TextPosition position)
     if ((value = m_variables[name]) || (value = m_globals[name]))
         return m_builder->CreateLoad(value, name);
     throw Exception(std::move(position), "Unknown identifier: " + name);
+}
+
+llvm::Value *CodeGenerator::gen_exit(llvm::BasicBlock *exitTo, TextPosition position) {
+    if (exitTo)
+        return m_builder->CreateBr(exitTo);
+    throw Exception("");
 }
 
 

@@ -24,6 +24,7 @@ enum ExpressionType {
     EXPR_CONDITION,
     EXPR_CONST,
     EXPR_DOUBLE,
+    EXPR_EXIT,
     EXPR_FOR_LOOP,
     EXPR_FUNCTION,
     EXPR_IDENTIFIER,
@@ -461,6 +462,15 @@ public:
     BreakExpression(const TextPosition tp) : Expression(std::move(tp)) {}
     bool can_be_operand() const override { return false; }
     ExpressionType type() const override { return EXPR_BREAK; }
+
+    std::string to_string() const override;
+};
+
+class ExitExpression : public Expression {
+public:
+    ExitExpression(const TextPosition tp) : Expression(std::move(tp)) {}
+    bool can_be_operand() const override { return false; }
+    ExpressionType type() const override { return EXPR_EXIT; }
 
     std::string to_string() const override;
 };
