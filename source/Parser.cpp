@@ -258,19 +258,20 @@ std::shared_ptr<FunctionExpression> Parser::parse_function() {
     if (next_token()->type() != TOK_OPEN_BRACKET)
         throw ExpectedDifferentException(std::move(position()), "(");
     std::list<Variable> args;
+    std::list<std::string> comma_separated;
+    next_token();
     while (last_token()->type() != TOK_CLOSE_BRACKET) {
+        if (last_token()->type() == TOK_COLON) {
+            auto type = next_token()->type();
+            for (auto& name : comma_separated)
+                args.push_back({name, type});
+            comma_separated.clear();
+        } else {
+            if (last_token()->type() != TOK_IDENTIFIER)
+                throw Exception(position(), "Expected an argument name or ')'");
+            comma_separated.push_back(last_token()->to_string());
+        }
         next_token();
-        if (last_token()->type() != TOK_IDENTIFIER)
-            throw Exception(std::move(position()), "Expected an argument name or ')'");
-        std::string aname = last_token()->to_string();
-        if (next_token()->type() != TOK_COLON)
-            throw ExpectedDifferentException(std::move(position()), ":");
-        if (!Syntax::is_datatype(next_token()->type()))
-            throw Exception(std::move(position()), last_token()->to_string() + " is not a data type");
-        TokenType atype = last_token()->type();
-        args.push_back(Variable(aname, atype));
-        if (next_token()->type() != TOK_COMMA && last_token()->type() != TOK_CLOSE_BRACKET)
-            throw Exception(std::move(position()), "Expected ',' or ')");
     }
 
     if (next_token()->type() != TOK_COLON)

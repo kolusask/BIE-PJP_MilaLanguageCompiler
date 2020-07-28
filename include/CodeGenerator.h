@@ -46,10 +46,12 @@ private:
     llvm::Value* gen_while(const std::shared_ptr<WhileLoopExpression> expr);
     llvm::Value* gen_break(llvm::BasicBlock *breakTo, TextPosition position);
     llvm::Value* gen_for(const std::shared_ptr<ForLoopExpression> expr);
-    //llvm::Value* gen_assign(std::string var, ExpressionPointer val, TextPosition pos);
+    //llvm::Value* assign(std::string var, ExpressionPointer val, TextPosition pos);
 
+    llvm::Value* assign(std::string name, llvm::Value *value, TextPosition position);
+    llvm::Value *load(const std::string &name, TextPosition position);
     llvm::Value *to_double(llvm::Value *value, llvm::Type *type = nullptr);
-    llvm::Type* get_type(TokenType type);
+    llvm::Type *get_type(TokenType type, bool ptr = false);
     llvm::Value* get_default_value(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);
 
@@ -58,6 +60,7 @@ private:
     std::unique_ptr<llvm::Module> m_module;
     std::map<std::string, llvm::AllocaInst *> m_variables;
     std::map<std::string, llvm::Constant *> m_constants;
+    std::map<std::string, llvm::GlobalVariable*> m_globals;
     std::shared_ptr<TopLevelExpression> m_tree;
 };
 

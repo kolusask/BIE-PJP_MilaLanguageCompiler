@@ -56,7 +56,7 @@ llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpre
     llvm::Value* value;
     if ((value = m_constants[expr->value()]))
         return value;
-    if ((value = m_variables[expr->value()]))
+    if ((value = m_variables[expr->value()]) || ((value = m_globals[expr->value()])))
         return m_builder->CreateLoad(value, expr->value().c_str());
 
     throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
@@ -94,7 +94,7 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
 
     auto function = m_module->getFunction(expr->name());
     if (!function)
-        throw Exception(expr->position(), "Function is not defined");
+        throw Exception(expr->position(), "Function is not defined: " + expr->name());
 
     // Check number of arguments
     if (expr->number_of_args() != function->arg_size()) {
@@ -129,12 +129,21 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
     return call;
 }
 
-llvm::Type* CodeGenerator::get_type(TokenType type) {
-    switch (type) {
-        case TOK_INTEGER:
-            return llvm::Type::getDoubleTy(m_context);
-        default:
-            return nullptr;
+llvm::Type * CodeGenerator::get_type(TokenType type, bool ptr) {
+    if (ptr) {
+        switch (type) {
+            case TOK_INTEGER:
+                return llvm::Type::getInt32PtrTy(m_context);
+            default:
+                return nullptr;
+        }
+    } else {
+        switch (type) {
+            case TOK_INTEGER:
+                return llvm::Type::getInt32Ty(m_context);
+            default:
+                return nullptr;
+        }
     }
 }
 
@@ -150,20 +159,22 @@ llvm::Value *CodeGenerator::get_default_value(TokenType type) {
 }
 
 llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpression> expr) {
-    // Prototype
+    // Function type
     std::vector<llvm::Type*> argTypes;
     for (auto& tt : expr->arg_types())
-        argTypes.push_back(get_type(tt));
-    auto retType = get_type(expr->return_type());
+        argTypes.push_back(get_type(tt, false));
+    auto retType = get_type(expr->return_type(), false);
     auto functionType = llvm::FunctionType::get(retType, argTypes, false);
+
     auto function = llvm::Function::Create(
             functionType, llvm::Function::ExternalLinkage, expr->name(), m_module.get());
+    auto block = llvm::BasicBlock::Create(m_context, "entry", function);
+    m_builder->SetInsertPoint(block);
     auto argNames = expr->arg_names();
     size_t i = 0;
     for (auto& arg : function->args())
         arg.setName(argNames[i++]);
-//TODO Clean up this mess
-    // arguments
+    m_variables.clear();
     for (auto& arg : function->args()) {
         auto alloca = create_alloca(function, arg.getName(), arg.getType());
         m_builder->CreateStore(&arg, alloca);
@@ -176,19 +187,18 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
         m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
 
     auto oldVars = m_variables;
-    for (auto& v : m_tree->vars())
-        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
+    for (auto& v : expr->vars())
+        m_variables[v.first] = create_alloca(function, v.first, get_type(v.second));
     m_variables[expr->name()] = create_alloca(function, expr->name(), get_type(expr->return_type()));
 
     // body
-    auto block = llvm::BasicBlock::Create(m_context, "entry", function);
     m_builder->SetInsertPoint(block);
 
     generate(expr->body(), nullptr);
 
-    m_builder->CreateRet(m_variables[expr->name()]);
+    auto retVal = m_builder->CreateLoad(m_variables[expr->name()]);
+    m_builder->CreateRet(retVal);
 
-    m_variables = oldVars;
     m_constants = oldConsts;
 
     return function;
@@ -248,15 +258,8 @@ llvm::Value * CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpres
     return function;
 }
 
-llvm::Value* CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> ep) {
-    auto expr = std::static_pointer_cast<AssignExpression>(ep);
-
-    auto value = generate(expr->value(), nullptr);
-    auto variable = m_variables[expr->name()];
-    if (!variable)
-        throw Exception(expr->position(), "Unknown identifier: '" + expr->name() + '\'');
-    m_builder->CreateStore(value, variable);
-    return value;
+llvm::Value* CodeGenerator::gen_assign(const std::shared_ptr<AssignExpression> expr) {
+    return assign(std::move(expr->name()), generate(std::move(expr->value())), expr->position());
 }
 
 
@@ -265,17 +268,27 @@ void CodeGenerator::print() const {
 }
 
 llvm::Value *CodeGenerator::generate_code() {
+
+    auto zero = m_builder->getInt32(0);
+    for (auto& c : m_tree->consts())
+        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr));
+    for (auto& v : m_tree->vars()) {
+        auto global = new llvm::GlobalVariable(*m_module, get_type(v.second), false,
+                                               llvm::GlobalVariable::ExternalLinkage, zero, v.first);
+        m_globals[v.first] = global;
+    }
+    auto global = new llvm::GlobalVariable(*m_module, get_type(TOK_INTEGER), false,
+                                           llvm::GlobalVariable::ExternalLinkage, zero, "_extra");
+    m_globals["_extra"] = global;
+
+    for (const auto& fun : m_tree->functions())
+        gen_function(fun);
+
     auto fType = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context), {}, false);
     auto function = llvm::Function::Create(fType, llvm::Function::ExternalLinkage, "main", m_module.get());
     llvm::BasicBlock* block = llvm::BasicBlock::Create(m_context, "start", function);
     m_builder->SetInsertPoint(block);
-    auto extraAlloca = create_alloca(function, "_extra", llvm::Type::getInt8Ty(m_context));
-    m_variables["_extra"] = extraAlloca;
-    for (auto& c : m_tree->consts())
-        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
-
-    for (auto& v : m_tree->vars())
-        m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
+        //m_variables[v.first] = create_alloca(function, v.first, llvm::Type::getInt32Ty(m_context));
     gen_block(m_tree->body());
     m_builder->CreateRet(nullptr);
     return function;
@@ -289,7 +302,7 @@ llvm::Value *CodeGenerator::gen_block(const std::shared_ptr<BlockExpression> exp
 
 
 
-//llvm::Value* CodeGenerator::gen_assign(const std::string &name, ExpressionPointer value) {
+//llvm::Value* CodeGenerator::assign(const std::string &name, ExpressionPointer value) {
 //    return llvm::Value*(__cxx11::list());
 //}
 
@@ -392,14 +405,11 @@ llvm::Value *CodeGenerator::gen_for(std::shared_ptr<ForLoopExpression> expr) {
 
     auto start = generate(expr->start());
     auto finish = generate(expr->finish());
-    auto count = m_variables[expr->counter()];
-    if (!count)
-        throw Exception(expr->position(), "Unknown counter variable: " + expr->counter());
-    m_builder->CreateStore(start, count);
+    assign(expr->counter(), start, expr->position());
     m_builder->CreateBr(controlBlock);
 
     m_builder->SetInsertPoint(controlBlock);
-    auto countValue = m_builder->CreateLoad(count, "count");
+    auto countValue = load(expr->counter(), expr->position());
     if (countValue->getType() != llvm::Type::getInt32Ty(m_context))
         throw Exception(expr->position(), "For-loop counter must be an integer");
     auto stop = m_builder->CreateICmpEQ(countValue, finish, "stop");
@@ -413,11 +423,29 @@ llvm::Value *CodeGenerator::gen_for(std::shared_ptr<ForLoopExpression> expr) {
         newCount = m_builder->CreateSub(countValue, one, "newcount");
     else
         newCount = m_builder->CreateAdd(countValue, one, "newcount");
-    m_builder->CreateStore(newCount, count);
+    assign(std::move(expr->counter()), newCount, expr->position());
     m_builder->CreateBr(controlBlock);
 
     m_builder->SetInsertPoint(afterBlock);
     return function;
+}
+
+llvm::Value *CodeGenerator::assign(std::string name, llvm::Value *value, TextPosition position) {
+    llvm::Value* var;
+    if ((var = m_variables[name]) || (var = m_globals[name]))
+        return m_builder->CreateStore(value, var);
+    if (m_constants[name])
+        throw Exception(std::move(position), "Cannot change constant: " + name);
+    throw Exception(std::move(position), "Unknown identifier: " + name);
+}
+
+llvm::Value *CodeGenerator::load(const std::string &name, TextPosition position) {
+    llvm::Value* value;
+    if ((value = m_constants[name]))
+        return value;
+    if ((value = m_variables[name]) || (value = m_globals[name]))
+        return m_builder->CreateLoad(value, name);
+    throw Exception(std::move(position), "Unknown identifier: " + name);
 }
 
 

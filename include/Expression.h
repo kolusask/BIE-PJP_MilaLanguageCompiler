@@ -365,6 +365,10 @@ public:
         return std::move(m_body);
     }
 
+    std::list<std::shared_ptr<FunctionExpression>> functions() const {
+        return std::move(m_functions);
+    }
+
 private:
     std::list<std::shared_ptr<FunctionExpression>> m_functions;
     std::shared_ptr<ConstExpression> m_consts;
@@ -437,7 +441,7 @@ public:
 
     std::string to_string() const override;
 
-    const std::string& counter() const { return m_counter; }
+    const std::string counter() const { return m_counter; }
     ExpressionPointer start() const { return std::move(m_start); }
     ExpressionPointer finish() const { return std::move(m_finish); }
     bool down() const { return m_down; }
