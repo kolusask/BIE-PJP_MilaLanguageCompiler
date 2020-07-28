@@ -54,7 +54,8 @@ TokenType Syntax::check_keyword(const std::string &word) {
                                                               {"to", TOK_TO},
                                                               {"downto", TOK_DOWNTO},
                                                               {"exit", TOK_EXIT},
-                                                              {"procedure", TOK_PROCEDURE}};
+                                                              {"procedure", TOK_PROCEDURE},
+                                                              {"double", TOK_DOUBLE}};
     auto it = keyWords.find(word);
     if (it != keyWords.end())
         return it->second;
@@ -80,7 +81,7 @@ TokenType Syntax::check_operator(const std::string &op) {
 }
 
 bool Syntax::is_datatype(TokenType dt) {
-    static const std::set<TokenType> dataTypes = {TOK_INTEGER};
+    static const std::set<TokenType> dataTypes = {TOK_INTEGER, TOK_DOUBLE};
     return dataTypes.count(dt);
 }
 

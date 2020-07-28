@@ -131,6 +131,8 @@ public:
 
     std::string to_string() const override;
 
+    double value() const { return m_value; }
+
 private:
     const double m_value;
 };

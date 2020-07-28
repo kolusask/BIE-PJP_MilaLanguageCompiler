@@ -38,6 +38,7 @@ private:
     llvm::Value *gen_block(const std::shared_ptr<BlockExpression> expr, llvm::BasicBlock *breakTo,
                            llvm::BasicBlock *exitTo);
     llvm::Value* gen_integer(const std::shared_ptr<IntegerExpression> ep);
+    llvm::Value* gen_double(const std::shared_ptr<DoubleExpression> expr);
     llvm::Value* gen_identifier(const std::shared_ptr<IdentifierExpression> ep);
     llvm::Value* gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep);
     llvm::Value* gen_call(const std::shared_ptr<CallExpression> ep);

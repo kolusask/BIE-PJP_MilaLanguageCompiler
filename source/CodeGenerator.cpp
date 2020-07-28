@@ -49,6 +49,8 @@ llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicB
             return std::move(gen_exit(exitTo, expr->position()));
         case EXPR_PARENTHESES:
             return std::move(gen_parentheses(std::static_pointer_cast<ParenthesesExpression>(expr)));
+        case EXPR_DOUBLE:
+            return std::move(gen_double(std::static_pointer_cast<DoubleExpression>(expr)));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -81,7 +83,41 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
     auto left = generate(expr->left(), nullptr, nullptr);
     auto right = generate(expr->right(), nullptr, nullptr);
 
-    switch(expr->op()->type()) {
+    if (left->getType() == m_builder->getDoubleTy() || right->getType() == m_builder->getDoubleTy()) {
+        if (left->getType() == m_builder->getInt32Ty())
+            left = m_builder->CreateSIToFP(left, m_builder->getDoubleTy(), "doubleleft");
+        else if (right->getType() == m_builder->getInt32Ty())
+            right = m_builder->CreateSIToFP(right, m_builder->getDoubleTy(), "doubleright");
+        switch (expr->op()->type()) {
+            case TOK_PLUS:
+                return m_builder->CreateFAdd(left, right, "addtmp");
+            case TOK_MINUS:
+                return m_builder->CreateFSub(left, right, "subtmp");
+            case TOK_MULTIPLY:
+                return m_builder->CreateFMul(left, right, "multmp");
+            case TOK_LESS:
+                return m_builder->CreateFCmpOLT(left, right, "cmptmp");
+            case TOK_LESS_OR_EQUAL:
+                return m_builder->CreateFCmpOLE(left, right, "cmptmp");
+            case TOK_GREATER:
+                return m_builder->CreateFCmpOGT(left, right, "cmptmp");
+            case TOK_GREATER_OR_EQUAL:
+                return m_builder->CreateFCmpOGE(left, right, "cmptmp");
+            case TOK_MOD:
+                return m_builder->CreateFRem(left, right, "cmptmp");
+            case TOK_AND:
+                return m_builder->CreateAnd(left, right, "cmptmp");
+            case TOK_OR:
+                return m_builder->CreateOr(left, right, "cmptmp");
+            case TOK_NOT_EQUAL:
+                return m_builder->CreateFCmpONE(left, right, "cmptmp");
+            case TOK_EQUAL:
+                return m_builder->CreateFCmpOEQ(left, right, "cmptmp");
+            default: throw Exception(expr->position(), "NOT IMPLEMENTED");
+        }
+    }
+
+    switch (expr->op()->type()) {
         case TOK_PLUS:
             return m_builder->CreateAdd(left, right, "addtmp");
         case TOK_MINUS:
@@ -115,6 +151,13 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
     auto expr = std::static_pointer_cast<CallExpression>(ep);
 
     auto function = m_module->getFunction(expr->name());
+    if (expr->name() == "writeln" && expr->args().size() == 1) {
+        auto arg = generate(*expr->args().cbegin());
+        if (arg->getType() == get_type(TOK_INTEGER))
+            function = m_module->getFunction("writeInt");
+        else if (arg->getType() == get_type(TOK_DOUBLE))
+            function = m_module->getFunction("writeDouble");
+    }
     if (!function)
         throw Exception(expr->position(), "Function is not defined: " + expr->name());
 
@@ -159,6 +202,8 @@ llvm::Type * CodeGenerator::get_type(TokenType type) {
     switch (type) {
         case TOK_INTEGER:
             return llvm::Type::getInt32Ty(m_context);
+        case TOK_DOUBLE:
+            return llvm::Type::getDoubleTy(m_context);
         case TOK_VOID:
             return llvm::Type::getVoidTy(m_context);
         default:
@@ -296,7 +341,7 @@ llvm::Value *CodeGenerator::generate_code() {
 
     auto zero = m_builder->getInt32(0);
     for (auto& c : m_tree->consts())
-        m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));
+        m_constants[c.first] = llvm::dyn_cast<llvm::Constant>(generate(c.second, nullptr, nullptr));
     for (auto& v : m_tree->vars()) {
         auto global = new llvm::GlobalVariable(*m_module, get_type(v.second), false,
                                                llvm::GlobalVariable::ExternalLinkage, zero, v.first);
@@ -382,14 +427,25 @@ void CodeGenerator::add_standard_functions() {
             "printf", m_module.get());
 
     // writeln(int)
-    auto writelnType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+    auto writeIntType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
             {llvm::Type::getInt32Ty(m_context)}, false);
-    auto writelnFun = llvm::Function::Create(writelnType, llvm::Function::ExternalLinkage,
-            "writeln", m_module.get());
-    auto writelnBlk = llvm::BasicBlock::Create(m_context, "start", writelnFun);
-    m_builder->SetInsertPoint(writelnBlk);
-    llvm::Value *writeStr =  m_builder->CreateGlobalStringPtr("%d\n");
-    m_builder->CreateCall(printfType, printfFun, {writeStr, writelnFun->getArg(0)});
+    auto writeIntFun = llvm::Function::Create(writeIntType, llvm::Function::ExternalLinkage,
+            "writeInt", m_module.get());
+    auto writeIntBlk = llvm::BasicBlock::Create(m_context, "start", writeIntFun);
+    m_builder->SetInsertPoint(writeIntBlk);
+    llvm::Value *writeIntStr =  m_builder->CreateGlobalStringPtr("%d\n");
+    m_builder->CreateCall(printfType, printfFun, {writeIntStr, writeIntFun->getArg(0)});
+    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
+
+    // writeln(double)
+    auto writeDoubleType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
+            {llvm::Type::getDoubleTy(m_context)}, false);
+    auto writeDoubleFun = llvm::Function::Create(writeDoubleType, llvm::Function::ExternalLinkage,
+            "writeDouble", m_module.get());
+    auto writeDoubleBlk = llvm::BasicBlock::Create(m_context, "start", writeDoubleFun);
+    m_builder->SetInsertPoint(writeDoubleBlk);
+    llvm::Value *writeDoubleStr = m_builder->CreateGlobalStringPtr("%lf\n");
+    m_builder->CreateCall(printfType, printfFun, {writeDoubleStr, writeDoubleFun->getArg(0)});
     m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
 
     // scanf
@@ -477,6 +533,11 @@ llvm::Value *CodeGenerator::gen_exit(llvm::BasicBlock *exitTo, TextPosition posi
 
 llvm::Value *CodeGenerator::gen_parentheses(std::shared_ptr<ParenthesesExpression> expr) {
     return generate(expr->expression());
+}
+
+llvm::Value *CodeGenerator::gen_double(std::shared_ptr<DoubleExpression> expr) {
+    auto val = llvm::ConstantFP::get(m_builder->getDoubleTy(), expr->value());
+    return val;
 }
 
 
