@@ -23,8 +23,6 @@ int main(int argc, char* args[]) {
             generator.generate_code();
             generator.print();
             generator.write_output(outFile);
-
-
         } catch (Exception& e) {
             if (e.has_position()) {
                 auto pos = e.position();

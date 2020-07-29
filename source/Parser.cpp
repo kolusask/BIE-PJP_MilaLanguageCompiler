@@ -267,21 +267,24 @@ std::shared_ptr<FunctionExpression> Parser::parse_function(bool procedure) {
     std::list<std::string> comma_separated;
     next_token();
     while (last_token()->type() != TOK_CLOSE_BRACKET) {
-        if (last_token()->type() == TOK_COLON) {
-            auto type = next_token()->type();
-            for (auto& name : comma_separated)
-                args.push_back({name, type});
-            comma_separated.clear();
-            if (next_token()->type() == TOK_CLOSE_BRACKET)
+        std::string name = last_token()->to_string();
+        switch (next_token()->type()) {
+            case TOK_COMMA:
+                comma_separated.push_back(std::move(name));
+                next_token();
+                continue;
+            case TOK_COLON:
+                comma_separated.push_back(std::move(name));
+                if (!Syntax::is_datatype(next_token()->type()))
+                    throw UnexpectedTokenException(std::move(position()), std::move(last_token()->to_string()));
+                for (const auto& n : comma_separated)
+                    args.push_back({n, last_token()->type()});
+                comma_separated.clear();
+                next_token();
                 break;
-            if (last_token()->type() != TOK_SEMICOLON)
-                throw Exception(std::move(position()), "Expected ';' or ')'");
-        } else {
-            if (last_token()->type() != TOK_IDENTIFIER)
-                throw Exception(std::move(position()), "Expected an argument name or ')'");
-            comma_separated.push_back(last_token()->to_string());
+            default:
+                break;
         }
-        next_token();
     }
 
     TokenType type;
