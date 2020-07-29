@@ -194,7 +194,7 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
             throw Exception(arg->position(), "Can only read into a variable");
     } else {
         for (const auto &arg : expr->args())
-            args.push_back(generate(arg, nullptr, nullptr));
+            args.push_back(generate(arg));
     }
     auto call = m_builder->CreateCall(function, args,
             function->getReturnType() == m_builder->getVoidTy() ? "" : "calltmp");
@@ -252,7 +252,6 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     if (writeBody) {
         auto body = llvm::BasicBlock::Create(m_context, "entry", function);
         m_builder->SetInsertPoint(body);
-        m_variables.clear();
         for (auto& arg : function->args()) {
             auto alloca = create_alloca(function, arg.getName(), arg.getType());
             m_builder->CreateStore(&arg, alloca);
@@ -260,7 +259,8 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
         }
         auto oldConsts = m_constants;
         for (auto& c : expr->consts())
-            m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
+            m_constants[c.first] =
+                    llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
 
         auto oldVars = m_variables;
         for (auto& v : expr->vars())
@@ -282,6 +282,7 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
         m_builder->CreateRet(retVal);
         m_constants = oldConsts;
     }
+    m_variables.clear();
 
     return function;
 }
@@ -502,6 +503,7 @@ llvm::Value *CodeGenerator::gen_for(const std::shared_ptr<ForLoopExpression> exp
 
     auto start = generate(expr->start(), nullptr, nullptr);
     auto finish = generate(expr->finish(), nullptr, nullptr);
+
     assign(expr->counter(), start, expr->position());
     m_builder->CreateBr(controlBlock);
 
