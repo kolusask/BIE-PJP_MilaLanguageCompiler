@@ -112,6 +112,8 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
                 return m_builder->CreateFCmpONE(left, right, "cmptmp");
             case TOK_EQUAL:
                 return m_builder->CreateFCmpOEQ(left, right, "cmptmp");
+            case TOK_DIVIDE:
+                return m_builder->CreateFDiv(left, right, "divtmp");
             default: throw Exception(expr->position(), "NOT IMPLEMENTED");
         }
     }
@@ -141,6 +143,8 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
             return m_builder->CreateICmpNE(left, right, "cmptmp");
         case TOK_EQUAL:
             return m_builder->CreateICmpEQ(left, right, "cmptmp");
+        case TOK_DIVIDE:
+            return m_builder->CreateSDiv(left, right, "divtmp");
         default: throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 
