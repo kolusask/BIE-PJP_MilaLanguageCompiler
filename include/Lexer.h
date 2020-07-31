@@ -24,6 +24,7 @@ private:
     double read_number(bool& isDouble);
     int read_hex();
     int read_oct();
+    std::string read_string();
     std::string read_identifier();
     std::string read_operator();
     bool is_in_operator(const char ch) const;

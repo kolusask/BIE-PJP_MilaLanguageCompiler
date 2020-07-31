@@ -135,6 +135,9 @@ std::shared_ptr<Token> Lexer::next_token() {
             return as_token<IntegerToken, int>(read_hex());
         case '&':
             return as_token<IntegerToken, int>(read_oct());
+        // string
+        case '\'':
+            return as_token<StringToken, std::string>(read_string());
         //single char
         default: {
             const TokenType type = Syntax::check_character(m_char);
@@ -159,6 +162,34 @@ bool Lexer::is_in_operator(const char ch) const {
                                           '>',
                                           ':'};
     return op_set.count(ch);
+}
+
+std::string Lexer::read_string() {
+    std::ostringstream result;
+    bool escape = false;
+    while (read_char() != '\'' || escape) {
+        if (escape) {
+            switch (m_char) {
+                case '\\':
+                case '\'':
+                    result << m_char;
+                    break;
+                case 'n':
+                    result << '\n';
+                    break;
+                default:
+                    throw InvalidSymbolException(m_position, m_char);
+            }
+            escape = false;
+        } else {
+            if (m_char == '\\')
+                escape = true;
+            else
+                result << m_char;
+        }
+    }
+    read_char();
+    return result.str();
 }
 
 

@@ -20,7 +20,8 @@ const std::list<Syntax::Operator> Syntax::s_operators = {{TOK_ASSIGN, ":=", fals
                                                          {TOK_NOT_EQUAL, "<>", true},
                                                          {TOK_PLUS, "+", false},
                                                          {TOK_AND, "and", true},
-                                                         {TOK_OR, "or", true}};
+                                                         {TOK_OR, "or", true},
+                                                         {TOK_DIV, "div", false}};
 
 TokenType Syntax::check_character(const char ch) {
     static const std::map<char, TokenType> characters = {{'=', TOK_EQUAL},
@@ -82,7 +83,7 @@ TokenType Syntax::check_operator(const std::string &op) {
 }
 
 bool Syntax::is_datatype(TokenType dt) {
-    static const std::set<TokenType> dataTypes = {TOK_INTEGER, TOK_DOUBLE};
+    static const std::set<TokenType> dataTypes = {TOK_INTEGER, TOK_DOUBLE, TOK_STRING};
     return dataTypes.count(dt);
 }
 

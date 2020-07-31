@@ -135,3 +135,7 @@ std::string BreakExpression::to_string() const {
 std::string ExitExpression::to_string() const {
     return "exit";
 }
+
+std::string StringExpression::to_string() const {
+    return '"' + m_string + '"';
+}

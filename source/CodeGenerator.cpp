@@ -50,6 +50,8 @@ llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicB
             return std::move(gen_parentheses(std::static_pointer_cast<ParenthesesExpression>(expr)));
         case EXPR_DOUBLE:
             return std::move(gen_double(std::static_pointer_cast<DoubleExpression>(expr)));
+        case EXPR_STRING:
+            return std::move(gen_string(std::static_pointer_cast<StringExpression>(expr)));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -112,6 +114,10 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
                 return m_builder->CreateFCmpONE(left, right, "cmptmp");
             case TOK_EQUAL:
                 return m_builder->CreateFCmpOEQ(left, right, "cmptmp");
+            case TOK_DIVIDE:
+                return m_builder->CreateFDiv(left, right, "divtmp");
+            case TOK_DIV:
+                return m_builder->CreateSDiv(left, right, "divtmp");
             default: throw Exception(expr->position(), "NOT IMPLEMENTED");
         }
     }
@@ -141,6 +147,10 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
             return m_builder->CreateICmpNE(left, right, "cmptmp");
         case TOK_EQUAL:
             return m_builder->CreateICmpEQ(left, right, "cmptmp");
+        case TOK_DIVIDE:
+            return m_builder->CreateSDiv(left, right, "divtmp");
+        case TOK_DIV:
+            return m_builder->CreateSDiv(left, right, "divtmp");
         default: throw Exception(expr->position(), "NOT IMPLEMENTED");
     }
 
@@ -156,6 +166,10 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
             function = m_module->getFunction("writeInt");
         else if (arg->getType() == get_type(TOK_DOUBLE))
             function = m_module->getFunction("writeDouble");
+        else if (arg->getType() == get_type(TOK_STRING)) {
+            function = m_module->getFunction("printf");
+            return m_builder->CreateCall(function, arg, "calltmp");
+        }
     } else if (expr->name() == "readln") {
         auto arg = generate(*expr->args().cbegin());
         if (arg->getType() == get_type(TOK_INTEGER))
@@ -194,7 +208,7 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
             throw Exception(arg->position(), "Can only read into a variable");
     } else {
         for (const auto &arg : expr->args())
-            args.push_back(generate(arg, nullptr, nullptr));
+            args.push_back(generate(arg));
     }
     auto call = m_builder->CreateCall(function, args,
             function->getReturnType() == m_builder->getVoidTy() ? "" : "calltmp");
@@ -211,6 +225,8 @@ llvm::Type * CodeGenerator::get_type(TokenType type) {
             return llvm::Type::getDoubleTy(m_context);
         case TOK_VOID:
             return llvm::Type::getVoidTy(m_context);
+        case TOK_STRING:
+            return llvm::Type::getInt8PtrTy(m_context);
         default:
             return nullptr;
     }
@@ -252,7 +268,6 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
     if (writeBody) {
         auto body = llvm::BasicBlock::Create(m_context, "entry", function);
         m_builder->SetInsertPoint(body);
-        m_variables.clear();
         for (auto& arg : function->args()) {
             auto alloca = create_alloca(function, arg.getName(), arg.getType());
             m_builder->CreateStore(&arg, alloca);
@@ -260,7 +275,8 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
         }
         auto oldConsts = m_constants;
         for (auto& c : expr->consts())
-            m_constants[c.first] = llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
+            m_constants[c.first] =
+                    llvm::dyn_cast<llvm::ConstantInt>(generate(c.second, nullptr, nullptr));//create_alloca(function, c.first, llvm::Type::getInt32Ty(m_context));
 
         auto oldVars = m_variables;
         for (auto& v : expr->vars())
@@ -282,6 +298,7 @@ llvm::Value* CodeGenerator::gen_function(const std::shared_ptr<FunctionExpressio
         m_builder->CreateRet(retVal);
         m_constants = oldConsts;
     }
+    m_variables.clear();
 
     return function;
 }
@@ -502,6 +519,7 @@ llvm::Value *CodeGenerator::gen_for(const std::shared_ptr<ForLoopExpression> exp
 
     auto start = generate(expr->start(), nullptr, nullptr);
     auto finish = generate(expr->finish(), nullptr, nullptr);
+
     assign(expr->counter(), start, expr->position());
     m_builder->CreateBr(controlBlock);
 
@@ -558,6 +576,10 @@ llvm::Value *CodeGenerator::gen_parentheses(std::shared_ptr<ParenthesesExpressio
 llvm::Value *CodeGenerator::gen_double(std::shared_ptr<DoubleExpression> expr) {
     auto val = llvm::ConstantFP::get(m_builder->getDoubleTy(), expr->value());
     return val;
+}
+
+llvm::Value *CodeGenerator::gen_string(const std::shared_ptr<StringExpression> expr) {
+    return m_builder->CreateGlobalStringPtr(std::move(expr->string()), "str");
 }
 
 

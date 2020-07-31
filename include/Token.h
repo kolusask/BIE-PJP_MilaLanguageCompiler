@@ -19,6 +19,7 @@ enum TokenType {
     TOK_COMMA,
     TOK_COLON,
     TOK_CONST,
+    TOK_DIV,
     TOK_DIVIDE,
     TOK_DO,
     TOK_DOT,
@@ -49,6 +50,7 @@ enum TokenType {
     TOK_PROCEDURE,
     TOK_PROGRAM,
     TOK_SEMICOLON,
+    TOK_STRING,
     TOK_THEN,
     TOK_TO,
     TOK_VAR,
@@ -140,7 +142,8 @@ public:
                                                           {TOK_GREATER_OR_EQUAL, 10},
                                                           {TOK_NOT_EQUAL, 10},
                                                           {TOK_DIVIDE, 40},
-                                                          {TOK_OR, 2}};
+                                                          {TOK_OR, 2},
+                                                          {TOK_DIV, 40}};
         return prec_map.at(m_type);
     }
     TokenType type() const override { return m_type; }
@@ -158,12 +161,24 @@ public:
                                                                    {TOK_GREATER_OR_EQUAL, "?="},
                                                                    {TOK_DIVIDE, "/"},
                                                                    {TOK_AND, "and"},
-                                                                   {TOK_OR, "or"}};
+                                                                   {TOK_OR, "or"},
+                                                                   {TOK_DIV, "div"}};
         return opStrings.at(m_type);
     }
 
 private:
     const TokenType m_type;
+};
+
+class StringToken : public Token {
+public:
+    StringToken(std::string str) : m_string(std::move(str)) {}
+    TokenType type() const override { return TOK_STRING; }
+    std::string to_string() const override { return '"' + m_string + '"'; }
+    std::string string() const { return m_string; }
+
+private:
+    const std::string m_string;
 };
 
 #endif //MILALANGUAGECOMPILER_TOKENS_H

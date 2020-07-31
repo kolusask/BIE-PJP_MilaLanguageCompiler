@@ -157,7 +157,7 @@ ExpressionPointer Parser::parse_identifier() {
         next_token();
         while (last_token()->type() != TOK_CLOSE_BRACKET) {
             auto arg = parse_expression();
-            if (!arg->can_be_operand())
+            if (!arg->can_be_argument())
                 throw Exception(std::move(position()), "Not a valid function argument");
             args.push_back(arg);
             if (last_token()->type() == TOK_COMMA)
@@ -249,6 +249,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_break());
         case TOK_EXIT:
             return std::move(parse_exit());
+        case TOK_STRING:
+            return std::move(parse_string());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -267,21 +269,24 @@ std::shared_ptr<FunctionExpression> Parser::parse_function(bool procedure) {
     std::list<std::string> comma_separated;
     next_token();
     while (last_token()->type() != TOK_CLOSE_BRACKET) {
-        if (last_token()->type() == TOK_COLON) {
-            auto type = next_token()->type();
-            for (auto& name : comma_separated)
-                args.push_back({name, type});
-            comma_separated.clear();
-            if (next_token()->type() == TOK_CLOSE_BRACKET)
+        std::string name = last_token()->to_string();
+        switch (next_token()->type()) {
+            case TOK_COMMA:
+                comma_separated.push_back(std::move(name));
+                next_token();
+                continue;
+            case TOK_COLON:
+                comma_separated.push_back(std::move(name));
+                if (!Syntax::is_datatype(next_token()->type()))
+                    throw UnexpectedTokenException(std::move(position()), std::move(last_token()->to_string()));
+                for (const auto& n : comma_separated)
+                    args.push_back({n, last_token()->type()});
+                comma_separated.clear();
+                next_token();
                 break;
-            if (last_token()->type() != TOK_SEMICOLON)
-                throw Exception(std::move(position()), "Expected ';' or ')'");
-        } else {
-            if (last_token()->type() != TOK_IDENTIFIER)
-                throw Exception(std::move(position()), "Expected an argument name or ')'");
-            comma_separated.push_back(last_token()->to_string());
+            default:
+                break;
         }
-        next_token();
     }
 
     TokenType type;
@@ -417,6 +422,13 @@ std::shared_ptr<BreakExpression> Parser::parse_break() {
 std::shared_ptr<ExitExpression> Parser::parse_exit() {
     next_token();
     return std::make_shared<ExitExpression>(std::move(position()));
+}
+
+std::shared_ptr<StringExpression> Parser::parse_string() {
+    auto tok = std::static_pointer_cast<StringToken>(last_token());
+    auto expr = std::make_shared<StringExpression>(std::move(tok->string()), std::move(position()));
+    next_token();
+    return expr;
 }
 
 
