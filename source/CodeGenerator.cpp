@@ -83,33 +83,35 @@ llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOpe
 
 llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> expr) {
     auto function = m_module->getFunction(expr->name());
-    if (expr->name() == "write" && expr->args().size() == 1) {
-        auto arg = generate(*expr->args().cbegin());
-        if (arg->getType() == get_type(TOK_INTEGER))
-            function = m_module->getFunction("writeInt");
-        else if (arg->getType() == get_type(TOK_DOUBLE))
-            function = m_module->getFunction("writeDouble");
-        else if (arg->getType() == get_type(TOK_STRING)) {
-            function = m_module->getFunction("printf");
-            return m_builder->CreateCall(function, arg, "calltmp");
+    if (expr->args().size() == 1) {
+        if (expr->name() == "write") {
+            auto arg = generate(*expr->args().cbegin());
+            if (arg->getType() == get_type(TOK_INTEGER))
+                function = m_module->getFunction("writeInt");
+            else if (arg->getType() == get_type(TOK_DOUBLE))
+                function = m_module->getFunction("writeDouble");
+            else if (arg->getType() == get_type(TOK_STRING)) {
+                function = m_module->getFunction("printf");
+                return m_builder->CreateCall(function, arg, "calltmp");
+            }
+        } else if (expr->name() == "writeln") {
+            auto arg = generate(*expr->args().cbegin());
+            if (arg->getType() == get_type(TOK_INTEGER))
+                function = m_module->getFunction("writeLnInt");
+            else if (arg->getType() == get_type(TOK_DOUBLE))
+                function = m_module->getFunction("writeLnDouble");
+            else if (arg->getType() == get_type(TOK_STRING)) {
+                function = m_module->getFunction("printf");
+                arg = gen_string(std::static_pointer_cast<StringExpression>(*expr->args().cbegin()), true);
+                return m_builder->CreateCall(function, arg, "calltmp");
+            }
+        } else if (expr->name() == "readln") {
+            auto arg = generate(*expr->args().cbegin());
+            if (arg->getType() == get_type(TOK_INTEGER))
+                function = m_module->getFunction("readInt");
+            else if (arg->getType() == get_type(TOK_DOUBLE))
+                function = m_module->getFunction("readDouble");
         }
-    } else if (expr->name() == "writeln" && expr->args().size() == 1) {
-        auto arg = generate(*expr->args().cbegin());
-        if (arg->getType() == get_type(TOK_INTEGER))
-            function = m_module->getFunction("writeLnInt");
-        else if (arg->getType() == get_type(TOK_DOUBLE))
-            function = m_module->getFunction("writeLnDouble");
-        else if (arg->getType() == get_type(TOK_STRING)) {
-            function = m_module->getFunction("printf");
-            arg = gen_string(std::static_pointer_cast<StringExpression>(*expr->args().cbegin()), true);
-            return m_builder->CreateCall(function, arg, "calltmp");
-        }
-    } else if (expr->name() == "readln") {
-        auto arg = generate(*expr->args().cbegin());
-        if (arg->getType() == get_type(TOK_INTEGER))
-            function = m_module->getFunction("readInt");
-        else if (arg->getType() == get_type(TOK_DOUBLE))
-            function = m_module->getFunction("readDouble");
     }
     if (!function)
         throw Exception(expr->position(), "Function is not defined: " + expr->name());
