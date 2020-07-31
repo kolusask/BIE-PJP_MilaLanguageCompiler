@@ -50,6 +50,8 @@ llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicB
             return std::move(gen_parentheses(std::static_pointer_cast<ParenthesesExpression>(expr)));
         case EXPR_DOUBLE:
             return std::move(gen_double(std::static_pointer_cast<DoubleExpression>(expr)));
+        case EXPR_STRING:
+            return std::move(gen_string(std::static_pointer_cast<StringExpression>(expr)));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -160,6 +162,10 @@ llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
             function = m_module->getFunction("writeInt");
         else if (arg->getType() == get_type(TOK_DOUBLE))
             function = m_module->getFunction("writeDouble");
+        else if (arg->getType() == get_type(TOK_STRING)) {
+            function = m_module->getFunction("printf");
+            return m_builder->CreateCall(function, arg, "calltmp");
+        }
     } else if (expr->name() == "readln") {
         auto arg = generate(*expr->args().cbegin());
         if (arg->getType() == get_type(TOK_INTEGER))
@@ -215,6 +221,8 @@ llvm::Type * CodeGenerator::get_type(TokenType type) {
             return llvm::Type::getDoubleTy(m_context);
         case TOK_VOID:
             return llvm::Type::getVoidTy(m_context);
+        case TOK_STRING:
+            return llvm::Type::getInt8PtrTy(m_context);
         default:
             return nullptr;
     }
@@ -564,6 +572,10 @@ llvm::Value *CodeGenerator::gen_parentheses(std::shared_ptr<ParenthesesExpressio
 llvm::Value *CodeGenerator::gen_double(std::shared_ptr<DoubleExpression> expr) {
     auto val = llvm::ConstantFP::get(m_builder->getDoubleTy(), expr->value());
     return val;
+}
+
+llvm::Value *CodeGenerator::gen_string(const std::shared_ptr<StringExpression> expr) {
+    return m_builder->CreateGlobalStringPtr(std::move(expr->string()), "str");
 }
 
 
