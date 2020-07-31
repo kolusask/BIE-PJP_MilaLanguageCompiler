@@ -136,7 +136,7 @@ std::shared_ptr<Token> Lexer::next_token() {
         case '&':
             return as_token<IntegerToken, int>(read_oct());
         // string
-        case '"':
+        case '\'':
             return as_token<StringToken, std::string>(read_string());
         //single char
         default: {
@@ -167,11 +167,11 @@ bool Lexer::is_in_operator(const char ch) const {
 std::string Lexer::read_string() {
     std::ostringstream result;
     bool escape = false;
-    while (read_char() != '"' || escape) {
+    while (read_char() != '\'' || escape) {
         if (escape) {
             switch (m_char) {
                 case '\\':
-                case '\"':
+                case '\'':
                     result << m_char;
                     break;
                 case 'n':
