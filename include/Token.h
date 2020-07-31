@@ -19,6 +19,7 @@ enum TokenType {
     TOK_COMMA,
     TOK_COLON,
     TOK_CONST,
+    TOK_DIV,
     TOK_DIVIDE,
     TOK_DO,
     TOK_DOT,
@@ -141,7 +142,8 @@ public:
                                                           {TOK_GREATER_OR_EQUAL, 10},
                                                           {TOK_NOT_EQUAL, 10},
                                                           {TOK_DIVIDE, 40},
-                                                          {TOK_OR, 2}};
+                                                          {TOK_OR, 2},
+                                                          {TOK_DIV, 40}};
         return prec_map.at(m_type);
     }
     TokenType type() const override { return m_type; }
@@ -159,7 +161,8 @@ public:
                                                                    {TOK_GREATER_OR_EQUAL, "?="},
                                                                    {TOK_DIVIDE, "/"},
                                                                    {TOK_AND, "and"},
-                                                                   {TOK_OR, "or"}};
+                                                                   {TOK_OR, "or"},
+                                                                   {TOK_DIV, "div"}};
         return opStrings.at(m_type);
     }
 
