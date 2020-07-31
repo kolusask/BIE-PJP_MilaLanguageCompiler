@@ -20,9 +20,9 @@ int main(int argc, char* args[]) {
             parser.parse();
             const char* outFile = argc >= 3 ? args[2] : "output";
             CodeGenerator generator(parser.get_tree());
-            generator.generate_code();
-            generator.print();
-            generator.write_output(outFile);
+            //generator.generate_code();
+            //generator.print();
+            //generator.write_output(outFile);
         } catch (Exception& e) {
             if (e.has_position()) {
                 auto pos = e.position();

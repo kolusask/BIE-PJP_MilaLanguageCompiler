@@ -49,6 +49,7 @@ enum TokenType {
     TOK_PROCEDURE,
     TOK_PROGRAM,
     TOK_SEMICOLON,
+    TOK_STRING,
     TOK_THEN,
     TOK_TO,
     TOK_VAR,
@@ -164,6 +165,17 @@ public:
 
 private:
     const TokenType m_type;
+};
+
+class StringToken : public Token {
+public:
+    StringToken(std::string str) : m_string(std::move(str)) {}
+    TokenType type() const override { return TOK_STRING; }
+    std::string to_string() const override { return '"' + m_string + '"'; }
+    std::string string() const { return m_string; }
+
+private:
+    const std::string m_string;
 };
 
 #endif //MILALANGUAGECOMPILER_TOKENS_H

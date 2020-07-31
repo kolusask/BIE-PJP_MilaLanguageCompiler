@@ -30,6 +30,7 @@ enum ExpressionType {
     EXPR_IDENTIFIER,
     EXPR_INTEGER,
     EXPR_PARENTHESES,
+    EXPR_STRING,
     EXPR_TOP_LEVEL,
     EXPR_VAR,
     EXPR_WHILE_LOOP
@@ -47,6 +48,7 @@ public:
     TextPosition position() const { return m_position; };
 
     virtual bool can_be_operand() const = 0;
+    virtual bool can_be_argument() const { return can_be_operand(); }
     virtual ExpressionType type() const = 0;
 
 protected:
@@ -209,22 +211,6 @@ public:
     std::string to_string() const override;
 
     std::list<ExpressionPointer> body() const { return m_body; }
-
-//    ExpressionPointer find_return(std::string funName) const {
-//        ExpressionPointer result = nullptr;
-//        for (const auto expr : m_body) {
-//            if (expr->type() == EXPR_ASSIGN) {
-//                auto assign = std::static_pointer_cast<AssignExpression>(expr);
-//                if (assign->name() == funName)
-//                    result = assign->value();
-//            } else if (expr->type() == EXPR_BLOCK) {
-//                auto candidate = std::static_pointer_cast<BlockExpression>(expr)->find_return(funName);
-//                if (candidate)
-//                    result = candidate;
-//            }
-//        }
-//        return result;
-//    }
 
 private:
     const std::list<ExpressionPointer> m_body;
@@ -477,6 +463,25 @@ public:
     ExpressionType type() const override { return EXPR_EXIT; }
 
     std::string to_string() const override;
+};
+
+class StringExpression : public Expression {
+public:
+    StringExpression(const std::string str, const TextPosition tp) :
+            Expression(std::move(tp)),
+            m_string(std::move(str)) {}
+
+    bool can_be_operand() const override { return false; }
+    bool can_be_argument() const override { return true; }
+    ExpressionType type() const override { return EXPR_STRING; }
+
+    std::string to_string() const override;
+
+    std::string string() const { return std::move(m_string); }
+
+
+private:
+    const std::string m_string;
 };
 
 
