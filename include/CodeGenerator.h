@@ -37,26 +37,27 @@ private:
 
     llvm::Value *gen_block(const std::shared_ptr<BlockExpression> expr, llvm::BasicBlock *breakTo,
                            llvm::BasicBlock *exitTo);
-    llvm::Value* gen_integer(const std::shared_ptr<IntegerExpression> ep);
+    llvm::Value* gen_integer(const std::shared_ptr<IntegerExpression> expr);
     llvm::Value* gen_double(const std::shared_ptr<DoubleExpression> expr);
-    llvm::Value* gen_identifier(const std::shared_ptr<IdentifierExpression> ep);
-    llvm::Value* gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep);
-    llvm::Value* gen_call(const std::shared_ptr<CallExpression> ep);
-    llvm::Value* gen_function(const std::shared_ptr<FunctionExpression> ep);
-    llvm::Value* gen_condition(const std::shared_ptr<ConditionExpression> ep, llvm::BasicBlock *breakTo,
+    llvm::Value* gen_identifier(const std::shared_ptr<IdentifierExpression> expr);
+    llvm::Value* gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> expr);
+    llvm::Value* gen_call(const std::shared_ptr<CallExpression> expr);
+    llvm::Value* gen_function(const std::shared_ptr<FunctionExpression> expr);
+    llvm::Value* gen_condition(const std::shared_ptr<ConditionExpression> expr, llvm::BasicBlock *breakTo,
                                llvm::BasicBlock *exitTo);
-    llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> ep);
+    llvm::Value* gen_assign(const std::shared_ptr<AssignExpression> expr);
     llvm::Value* gen_while(const std::shared_ptr<WhileLoopExpression> expr, llvm::BasicBlock *exitTo);
     llvm::Value* gen_break(llvm::BasicBlock *breakTo, TextPosition position);
     llvm::Value* gen_for(const std::shared_ptr<ForLoopExpression> expr, llvm::BasicBlock *exitTo);
     llvm::Value* gen_exit(llvm::BasicBlock* exitTo, TextPosition position);
     llvm::Value* gen_parentheses(const std::shared_ptr<ParenthesesExpression> expr);
-    llvm::Value* gen_string(const std::shared_ptr<StringExpression> expr);
+    llvm::Value *gen_string(const std::shared_ptr<StringExpression> expr, bool newline=false);
 
+    llvm::Value *gen_binary_ints(llvm::Value *left, llvm::Value *right, TokenType type, const TextPosition position);
+    llvm::Value *gen_binary_doubles(llvm::Value *left, llvm::Value *right, TokenType type, const TextPosition position);
 
     llvm::Value* assign(std::string name, llvm::Value *value, TextPosition position);
     llvm::Value* load(const std::string &name, TextPosition position);
-    llvm::Value* to_double(llvm::Value *value, llvm::Type *type = nullptr);
     llvm::Type* get_type(TokenType type);
     llvm::Constant* get_default_value(TokenType type);
     llvm::AllocaInst* create_alloca(llvm::Function* function, const std::string& name, llvm::Type *type);

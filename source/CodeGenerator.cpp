@@ -51,7 +51,7 @@ llvm::Value * CodeGenerator::generate(const ExpressionPointer expr, llvm::BasicB
         case EXPR_DOUBLE:
             return std::move(gen_double(std::static_pointer_cast<DoubleExpression>(expr)));
         case EXPR_STRING:
-            return std::move(gen_string(std::static_pointer_cast<StringExpression>(expr)));
+            return std::move(gen_string(std::static_pointer_cast<StringExpression>(expr), false));
         default:
             throw Exception("NOT IMPLEMENTED");
     }
@@ -71,111 +71,47 @@ llvm::Value* CodeGenerator::gen_identifier(const std::shared_ptr<IdentifierExpre
     throw Exception(expr->position(), "Unknown identifier '" + expr->value() + '\'');
 }
 
-llvm::Value * CodeGenerator::to_double(llvm::Value *value, llvm::Type *type) {
-    auto origType = value->getType();
-    if (!type)
-        type = llvm::Type::getDoubleTy(m_context);
-    return m_builder->CreateSIToFP(value, type, "double");
-}
-
-llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> ep) {
-    auto expr = std::static_pointer_cast<BinaryOperationExpression>(ep);
-
+llvm::Value* CodeGenerator::gen_binary_operation(const std::shared_ptr<BinaryOperationExpression> expr) {
     auto left = generate(expr->left(), nullptr, nullptr);
     auto right = generate(expr->right(), nullptr, nullptr);
 
-    if (left->getType() == m_builder->getDoubleTy() || right->getType() == m_builder->getDoubleTy()) {
-        if (left->getType() == m_builder->getInt32Ty())
-            left = m_builder->CreateSIToFP(left, m_builder->getDoubleTy(), "doubleleft");
-        else if (right->getType() == m_builder->getInt32Ty())
-            right = m_builder->CreateSIToFP(right, m_builder->getDoubleTy(), "doubleright");
-        switch (expr->op()->type()) {
-            case TOK_PLUS:
-                return m_builder->CreateFAdd(left, right, "addtmp");
-            case TOK_MINUS:
-                return m_builder->CreateFSub(left, right, "subtmp");
-            case TOK_MULTIPLY:
-                return m_builder->CreateFMul(left, right, "multmp");
-            case TOK_LESS:
-                return m_builder->CreateFCmpOLT(left, right, "cmptmp");
-            case TOK_LESS_OR_EQUAL:
-                return m_builder->CreateFCmpOLE(left, right, "cmptmp");
-            case TOK_GREATER:
-                return m_builder->CreateFCmpOGT(left, right, "cmptmp");
-            case TOK_GREATER_OR_EQUAL:
-                return m_builder->CreateFCmpOGE(left, right, "cmptmp");
-            case TOK_MOD:
-                return m_builder->CreateFRem(left, right, "cmptmp");
-            case TOK_AND:
-                return m_builder->CreateAnd(left, right, "cmptmp");
-            case TOK_OR:
-                return m_builder->CreateOr(left, right, "cmptmp");
-            case TOK_NOT_EQUAL:
-                return m_builder->CreateFCmpONE(left, right, "cmptmp");
-            case TOK_EQUAL:
-                return m_builder->CreateFCmpOEQ(left, right, "cmptmp");
-            case TOK_DIVIDE:
-                return m_builder->CreateFDiv(left, right, "divtmp");
-            case TOK_DIV:
-                return m_builder->CreateSDiv(left, right, "divtmp");
-            default: throw Exception(expr->position(), "NOT IMPLEMENTED");
-        }
-    }
+    if (left->getType() == m_builder->getDoubleTy() || right->getType() == m_builder->getDoubleTy())
+        return gen_binary_doubles(left, right, expr->op()->type(), std::move(expr->position()));
 
-    switch (expr->op()->type()) {
-        case TOK_PLUS:
-            return m_builder->CreateAdd(left, right, "addtmp");
-        case TOK_MINUS:
-            return m_builder->CreateSub(left, right, "subtmp");
-        case TOK_MULTIPLY:
-            return m_builder->CreateMul(left, right, "multmp");
-        case TOK_LESS:
-            return m_builder->CreateICmpSLT(left, right, "cmptmp");
-        case TOK_LESS_OR_EQUAL:
-            return m_builder->CreateICmpSLE(left, right, "cmptmp");
-        case TOK_GREATER:
-            return m_builder->CreateICmpSGT(left, right, "cmptmp");
-        case TOK_GREATER_OR_EQUAL:
-            return m_builder->CreateICmpSGE(left, right, "cmptmp");
-        case TOK_MOD:
-            return m_builder->CreateSRem(left, right, "cmptmp");
-        case TOK_AND:
-            return m_builder->CreateAnd(left, right, "cmptmp");
-        case TOK_OR:
-            return m_builder->CreateOr(left, right, "cmptmp");
-        case TOK_NOT_EQUAL:
-            return m_builder->CreateICmpNE(left, right, "cmptmp");
-        case TOK_EQUAL:
-            return m_builder->CreateICmpEQ(left, right, "cmptmp");
-        case TOK_DIVIDE:
-            return m_builder->CreateSDiv(left, right, "divtmp");
-        case TOK_DIV:
-            return m_builder->CreateSDiv(left, right, "divtmp");
-        default: throw Exception(expr->position(), "NOT IMPLEMENTED");
-    }
-
+    return gen_binary_ints(left, right, expr->op()->type(), std::move(expr->position()));
 }
 
-llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> ep) {
-    auto expr = std::static_pointer_cast<CallExpression>(ep);
-
+llvm::Value* CodeGenerator::gen_call(const std::shared_ptr<CallExpression> expr) {
     auto function = m_module->getFunction(expr->name());
-    if (expr->name() == "writeln" && expr->args().size() == 1) {
-        auto arg = generate(*expr->args().cbegin());
-        if (arg->getType() == get_type(TOK_INTEGER))
-            function = m_module->getFunction("writeInt");
-        else if (arg->getType() == get_type(TOK_DOUBLE))
-            function = m_module->getFunction("writeDouble");
-        else if (arg->getType() == get_type(TOK_STRING)) {
-            function = m_module->getFunction("printf");
-            return m_builder->CreateCall(function, arg, "calltmp");
+    if (expr->args().size() == 1) {
+        if (expr->name() == "write") {
+            auto arg = generate(*expr->args().cbegin());
+            if (arg->getType() == get_type(TOK_INTEGER))
+                function = m_module->getFunction("writeInt");
+            else if (arg->getType() == get_type(TOK_DOUBLE))
+                function = m_module->getFunction("writeDouble");
+            else if (arg->getType() == get_type(TOK_STRING)) {
+                function = m_module->getFunction("printf");
+                return m_builder->CreateCall(function, arg, "calltmp");
+            }
+        } else if (expr->name() == "writeln") {
+            auto arg = generate(*expr->args().cbegin());
+            if (arg->getType() == get_type(TOK_INTEGER))
+                function = m_module->getFunction("writeLnInt");
+            else if (arg->getType() == get_type(TOK_DOUBLE))
+                function = m_module->getFunction("writeLnDouble");
+            else if (arg->getType() == get_type(TOK_STRING)) {
+                function = m_module->getFunction("printf");
+                arg = gen_string(std::static_pointer_cast<StringExpression>(*expr->args().cbegin()), true);
+                return m_builder->CreateCall(function, arg, "calltmp");
+            }
+        } else if (expr->name() == "readln") {
+            auto arg = generate(*expr->args().cbegin());
+            if (arg->getType() == get_type(TOK_INTEGER))
+                function = m_module->getFunction("readInt");
+            else if (arg->getType() == get_type(TOK_DOUBLE))
+                function = m_module->getFunction("readDouble");
         }
-    } else if (expr->name() == "readln") {
-        auto arg = generate(*expr->args().cbegin());
-        if (arg->getType() == get_type(TOK_INTEGER))
-            function = m_module->getFunction("readInt");
-        else if (arg->getType() == get_type(TOK_DOUBLE))
-            function = m_module->getFunction("readDouble");
     }
     if (!function)
         throw Exception(expr->position(), "Function is not defined: " + expr->name());
@@ -327,9 +263,8 @@ llvm::Value *CodeGenerator::gen_while(const std::shared_ptr<WhileLoopExpression>
     return function;
 }
 
-llvm::Value * CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> ep, llvm::BasicBlock *breakTo,
+llvm::Value * CodeGenerator::gen_condition(const std::shared_ptr<ConditionExpression> expr, llvm::BasicBlock *breakTo,
                                            llvm::BasicBlock *exitTo) {
-    auto expr = std::static_pointer_cast<ConditionExpression>(ep);
     // if-condition
     auto condValue = generate(expr->condition(), nullptr, nullptr);
 
@@ -454,27 +389,57 @@ void CodeGenerator::add_standard_functions() {
     auto printfFun = llvm::Function::Create(printfType, llvm::Function::ExternalLinkage,
             "printf", m_module.get());
 
-    // writeln(int)
-    auto writeIntType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
-            {llvm::Type::getInt32Ty(m_context)}, false);
-    auto writeIntFun = llvm::Function::Create(writeIntType, llvm::Function::ExternalLinkage,
-            "writeInt", m_module.get());
-    auto writeIntBlk = llvm::BasicBlock::Create(m_context, "start", writeIntFun);
-    m_builder->SetInsertPoint(writeIntBlk);
-    llvm::Value *writeIntStr =  m_builder->CreateGlobalStringPtr("%d\n");
-    m_builder->CreateCall(printfType, printfFun, {writeIntStr, writeIntFun->getArg(0)});
-    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
+    {
+        auto writeIntType = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context),
+                                                    {llvm::Type::getInt32Ty(m_context)}, false);
+        // write(int)
+        {
+            auto writeIntFun = llvm::Function::Create(writeIntType, llvm::Function::ExternalLinkage,
+                                                      "writeInt", m_module.get());
+            auto writeIntBlk = llvm::BasicBlock::Create(m_context, "start", writeIntFun);
+            m_builder->SetInsertPoint(writeIntBlk);
+            llvm::Value *writeIntStr = m_builder->CreateGlobalStringPtr("%d");
+            m_builder->CreateCall(printfType, printfFun, {writeIntStr, writeIntFun->getArg(0)});
+            m_builder->CreateRet(nullptr);
+        }
 
-    // writeln(double)
-    auto writeDoubleType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
-            {llvm::Type::getDoubleTy(m_context)}, false);
-    auto writeDoubleFun = llvm::Function::Create(writeDoubleType, llvm::Function::ExternalLinkage,
-            "writeDouble", m_module.get());
-    auto writeDoubleBlk = llvm::BasicBlock::Create(m_context, "start", writeDoubleFun);
-    m_builder->SetInsertPoint(writeDoubleBlk);
-    llvm::Value *writeDoubleStr = m_builder->CreateGlobalStringPtr("%lf\n");
-    m_builder->CreateCall(printfType, printfFun, {writeDoubleStr, writeDoubleFun->getArg(0)});
-    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
+        // writeln(int)
+        {
+            auto writeIntFun = llvm::Function::Create(writeIntType, llvm::Function::ExternalLinkage,
+                                                      "writeLnInt", m_module.get());
+            auto writeIntBlk = llvm::BasicBlock::Create(m_context, "start", writeIntFun);
+            m_builder->SetInsertPoint(writeIntBlk);
+            llvm::Value *writeIntStr = m_builder->CreateGlobalStringPtr("%d\n");
+            m_builder->CreateCall(printfType, printfFun, {writeIntStr, writeIntFun->getArg(0)});
+            m_builder->CreateRet(nullptr);
+        }
+    }
+
+    {
+        auto writeDoubleType = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context),
+                                                       {llvm::Type::getDoubleTy(m_context)}, false);
+        // write(double)
+        {
+            auto writeDoubleFun = llvm::Function::Create(writeDoubleType, llvm::Function::ExternalLinkage,
+                                                         "writeDouble", m_module.get());
+            auto writeDoubleBlk = llvm::BasicBlock::Create(m_context, "start", writeDoubleFun);
+            m_builder->SetInsertPoint(writeDoubleBlk);
+            llvm::Value *writeDoubleStr = m_builder->CreateGlobalStringPtr("%lf");
+            m_builder->CreateCall(printfType, printfFun, {writeDoubleStr, writeDoubleFun->getArg(0)});
+            m_builder->CreateRet(nullptr);
+        }
+
+        // writeln(double)
+        {
+            auto writeDoubleFun = llvm::Function::Create(writeDoubleType, llvm::Function::ExternalLinkage,
+                                                         "writeLnDouble", m_module.get());
+            auto writeDoubleBlk = llvm::BasicBlock::Create(m_context, "start", writeDoubleFun);
+            m_builder->SetInsertPoint(writeDoubleBlk);
+            llvm::Value *writeDoubleStr = m_builder->CreateGlobalStringPtr("%lf\n");
+            m_builder->CreateCall(printfType, printfFun, {writeDoubleStr, writeDoubleFun->getArg(0)});
+            m_builder->CreateRet(nullptr);
+        }
+    }
 
     // scanf
     auto scanfType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
@@ -483,26 +448,30 @@ void CodeGenerator::add_standard_functions() {
             "scanf", m_module.get());
 
     // readln(int)
-    auto readIntType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
-                                               {llvm::Type::getInt32PtrTy(m_context)}, false);
-    auto readIntFun = llvm::Function::Create(readIntType, llvm::Function::ExternalLinkage,
-                                             "readInt", m_module.get());
-    auto readIntBlk = llvm::BasicBlock::Create(m_context, "start", readIntFun);
-    m_builder->SetInsertPoint(readIntBlk);
-    llvm::Value* readIntStr = m_builder->CreateGlobalStringPtr("%d[^\n]");
-    m_builder->CreateCall(scanfType, scanfFun, {readIntStr, readIntFun->getArg(0)});
-    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
+    {
+        auto readIntType = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context),
+                                                   {llvm::Type::getInt32PtrTy(m_context)}, false);
+        auto readIntFun = llvm::Function::Create(readIntType, llvm::Function::ExternalLinkage,
+                                                 "readInt", m_module.get());
+        auto readIntBlk = llvm::BasicBlock::Create(m_context, "start", readIntFun);
+        m_builder->SetInsertPoint(readIntBlk);
+        llvm::Value *readIntStr = m_builder->CreateGlobalStringPtr("%d[^\n]");
+        m_builder->CreateCall(scanfType, scanfFun, {readIntStr, readIntFun->getArg(0)});
+        m_builder->CreateRet(nullptr);
+    }
 
     // readln(double)
-    auto readDoubleType = llvm::FunctionType::get(llvm::Type::getInt32Ty(m_context),
-                                                  {llvm::Type::getDoublePtrTy(m_context)}, false);
-    auto readDoubleFun = llvm::Function::Create(readDoubleType, llvm::Function::ExternalLinkage,
-                                                "readDouble", m_module.get());
-    auto readDoubleBlk = llvm::BasicBlock::Create(m_context, "start", readDoubleFun);
-    m_builder->SetInsertPoint(readDoubleBlk);
-    llvm::Value* readDoubleStr = m_builder->CreateGlobalStringPtr("%lf[^\n]");
-    m_builder->CreateCall(scanfType, scanfFun, {readDoubleStr, readDoubleFun->getArg(0)});
-    m_builder->CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(m_context), 0));
+    {
+        auto readDoubleType = llvm::FunctionType::get(llvm::Type::getVoidTy(m_context),
+                                                      {llvm::Type::getDoublePtrTy(m_context)}, false);
+        auto readDoubleFun = llvm::Function::Create(readDoubleType, llvm::Function::ExternalLinkage,
+                                                    "readDouble", m_module.get());
+        auto readDoubleBlk = llvm::BasicBlock::Create(m_context, "start", readDoubleFun);
+        m_builder->SetInsertPoint(readDoubleBlk);
+        llvm::Value *readDoubleStr = m_builder->CreateGlobalStringPtr("%lf[^\n]");
+        m_builder->CreateCall(scanfType, scanfFun, {readDoubleStr, readDoubleFun->getArg(0)});
+        m_builder->CreateRet(nullptr);
+    }
 }
 
 llvm::Value *CodeGenerator::gen_break(llvm::BasicBlock *breakTo, TextPosition position) {
@@ -578,8 +547,85 @@ llvm::Value *CodeGenerator::gen_double(std::shared_ptr<DoubleExpression> expr) {
     return val;
 }
 
-llvm::Value *CodeGenerator::gen_string(const std::shared_ptr<StringExpression> expr) {
-    return m_builder->CreateGlobalStringPtr(std::move(expr->string()), "str");
+llvm::Value *CodeGenerator::gen_string(const std::shared_ptr<StringExpression> expr, bool newline) {
+    auto str = expr->string();
+    if (newline)
+        str += '\n';
+    return m_builder->CreateGlobalStringPtr(std::move(str), "str");
+}
+
+llvm::Value *CodeGenerator::gen_binary_ints(llvm::Value *left, llvm::Value *right, TokenType type,
+                                            const TextPosition position) {
+    switch (type) {
+        case TOK_PLUS:
+            return m_builder->CreateAdd(left, right, "addtmp");
+        case TOK_MINUS:
+            return m_builder->CreateSub(left, right, "subtmp");
+        case TOK_MULTIPLY:
+            return m_builder->CreateMul(left, right, "multmp");
+        case TOK_LESS:
+            return m_builder->CreateICmpSLT(left, right, "cmptmp");
+        case TOK_LESS_OR_EQUAL:
+            return m_builder->CreateICmpSLE(left, right, "cmptmp");
+        case TOK_GREATER:
+            return m_builder->CreateICmpSGT(left, right, "cmptmp");
+        case TOK_GREATER_OR_EQUAL:
+            return m_builder->CreateICmpSGE(left, right, "cmptmp");
+        case TOK_MOD:
+            return m_builder->CreateSRem(left, right, "cmptmp");
+        case TOK_AND:
+            return m_builder->CreateAnd(left, right, "cmptmp");
+        case TOK_OR:
+            return m_builder->CreateOr(left, right, "cmptmp");
+        case TOK_NOT_EQUAL:
+            return m_builder->CreateICmpNE(left, right, "cmptmp");
+        case TOK_EQUAL:
+            return m_builder->CreateICmpEQ(left, right, "cmptmp");
+        case TOK_DIVIDE:
+            return m_builder->CreateSDiv(left, right, "divtmp");
+        case TOK_DIV:
+            return m_builder->CreateSDiv(left, right, "divtmp");
+        default: throw Exception(std::move(position), "NOT IMPLEMENTED");
+    }
+}
+
+llvm::Value *CodeGenerator::gen_binary_doubles(llvm::Value *left, llvm::Value *right, TokenType type,
+                                               const TextPosition position) {
+    if (left->getType() == m_builder->getInt32Ty())
+        left = m_builder->CreateSIToFP(left, m_builder->getDoubleTy(), "doubleleft");
+    else if (right->getType() == m_builder->getInt32Ty())
+        right = m_builder->CreateSIToFP(right, m_builder->getDoubleTy(), "doubleright");
+    switch (type) {
+        case TOK_PLUS:
+            return m_builder->CreateFAdd(left, right, "addtmp");
+        case TOK_MINUS:
+            return m_builder->CreateFSub(left, right, "subtmp");
+        case TOK_MULTIPLY:
+            return m_builder->CreateFMul(left, right, "multmp");
+        case TOK_LESS:
+            return m_builder->CreateFCmpOLT(left, right, "cmptmp");
+        case TOK_LESS_OR_EQUAL:
+            return m_builder->CreateFCmpOLE(left, right, "cmptmp");
+        case TOK_GREATER:
+            return m_builder->CreateFCmpOGT(left, right, "cmptmp");
+        case TOK_GREATER_OR_EQUAL:
+            return m_builder->CreateFCmpOGE(left, right, "cmptmp");
+        case TOK_MOD:
+            return m_builder->CreateFRem(left, right, "cmptmp");
+        case TOK_AND:
+            return m_builder->CreateAnd(left, right, "cmptmp");
+        case TOK_OR:
+            return m_builder->CreateOr(left, right, "cmptmp");
+        case TOK_NOT_EQUAL:
+            return m_builder->CreateFCmpONE(left, right, "cmptmp");
+        case TOK_EQUAL:
+            return m_builder->CreateFCmpOEQ(left, right, "cmptmp");
+        case TOK_DIVIDE:
+            return m_builder->CreateFDiv(left, right, "divtmp");
+        case TOK_DIV:
+            return m_builder->CreateSDiv(left, right, "divtmp");
+        default: throw Exception(std::move(position), "NOT IMPLEMENTED");
+    }
 }
 
 

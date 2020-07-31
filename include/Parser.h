@@ -23,6 +23,7 @@ private:
     std::string parse_program_name();
     ExpressionPointer parse_expression();
     ExpressionPointer parse_single();
+    
     // parse specific constructs
     ExpressionPointer parse_binary(int exprPrec, ExpressionPointer left);
     ExpressionPointer parse_identifier();   // or a function call

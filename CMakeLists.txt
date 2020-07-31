@@ -37,7 +37,7 @@ add_executable(BIE_PJP_MilaLanguageCompiler
         include/Expression.h
         source/CodeGenerator.cpp
         include/CodeGenerator.h
-        include/TextPosition.h source/externs.cpp)
+        include/TextPosition.h source/externs.cpp include/Operators.h)
 
 #llvm_map_components_to_libnames(llvm_libs support core irreader executionEngine)
 
