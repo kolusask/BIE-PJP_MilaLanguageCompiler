@@ -157,7 +157,7 @@ ExpressionPointer Parser::parse_identifier() {
         next_token();
         while (last_token()->type() != TOK_CLOSE_BRACKET) {
             auto arg = parse_expression();
-            if (!arg->can_be_operand())
+            if (!arg->can_be_argument())
                 throw Exception(std::move(position()), "Not a valid function argument");
             args.push_back(arg);
             if (last_token()->type() == TOK_COMMA)
@@ -249,6 +249,8 @@ ExpressionPointer Parser::parse_single() {
             return std::move(parse_break());
         case TOK_EXIT:
             return std::move(parse_exit());
+        case TOK_STRING:
+            return std::move(parse_string());
         case TOK_SEMICOLON:
         case TOK_EOF:
             break;
@@ -420,6 +422,13 @@ std::shared_ptr<BreakExpression> Parser::parse_break() {
 std::shared_ptr<ExitExpression> Parser::parse_exit() {
     next_token();
     return std::make_shared<ExitExpression>(std::move(position()));
+}
+
+std::shared_ptr<StringExpression> Parser::parse_string() {
+    auto tok = std::static_pointer_cast<StringToken>(last_token());
+    auto expr = std::make_shared<StringExpression>(std::move(tok->string()), std::move(position()));
+    next_token();
+    return expr;
 }
 
 

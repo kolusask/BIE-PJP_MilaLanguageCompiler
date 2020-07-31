@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+
 enum TokenType {
     TOK_INVALID = 0,
     TOK_AND,
@@ -19,6 +20,7 @@ enum TokenType {
     TOK_COMMA,
     TOK_COLON,
     TOK_CONST,
+    TOK_DIV,
     TOK_DIVIDE,
     TOK_DO,
     TOK_DOT,
@@ -49,6 +51,7 @@ enum TokenType {
     TOK_PROCEDURE,
     TOK_PROGRAM,
     TOK_SEMICOLON,
+    TOK_STRING,
     TOK_THEN,
     TOK_TO,
     TOK_VAR,
@@ -82,7 +85,10 @@ public:
                                                                     {TOK_SEMICOLON, ";"},
                                                                     {TOK_COMMA, ","},
                                                                     {TOK_FORWARD, "forward"}};
-        return tokStrings.at(m_type);
+        auto it = tokStrings.find(m_type);
+        if (it == tokStrings.end())
+            return "<?>";
+        return it->second;
     }
 
 private:
@@ -126,44 +132,23 @@ private:
 class OperatorToken : public Token {
 public:
     OperatorToken(const TokenType type) : m_type(type) {}
-    int op_precedence() const override {
-        static const std::map<TokenType, int> prec_map = {{TOK_AND, 2},
-                                                          {TOK_PLUS, 20},
-                                                          {TOK_MINUS, 20},
-                                                          {TOK_MULTIPLY, 40},
-                                                          {TOK_EQUAL, 10},
-                                                          {TOK_MOD, 40},
-                                                          {TOK_GREATER, 10},
-                                                          {TOK_LESS, 10},
-                                                          {TOK_ASSIGN, 5},
-                                                          {TOK_LESS_OR_EQUAL, 10},
-                                                          {TOK_GREATER_OR_EQUAL, 10},
-                                                          {TOK_NOT_EQUAL, 10},
-                                                          {TOK_DIVIDE, 40},
-                                                          {TOK_OR, 2}};
-        return prec_map.at(m_type);
-    }
+    int op_precedence() const override;
     TokenType type() const override { return m_type; }
-    std::string to_string() const override {
-        const static std::map<TokenType, const char*> opStrings = {{TOK_PLUS, "+"},
-                                                                   {TOK_MINUS, "-"},
-                                                                   {TOK_MULTIPLY, "*"},
-                                                                   {TOK_EQUAL, "="},
-                                                                   {TOK_MOD, "mod"},
-                                                                   {TOK_GREATER, ">"},
-                                                                   {TOK_LESS, "<"},
-                                                                   {TOK_ASSIGN, ":="},
-                                                                   {TOK_LESS_OR_EQUAL, "<="},
-                                                                   {TOK_NOT_EQUAL, "<>"},
-                                                                   {TOK_GREATER_OR_EQUAL, "?="},
-                                                                   {TOK_DIVIDE, "/"},
-                                                                   {TOK_AND, "and"},
-                                                                   {TOK_OR, "or"}};
-        return opStrings.at(m_type);
-    }
+    std::string to_string() const override;
 
 private:
     const TokenType m_type;
+};
+
+class StringToken : public Token {
+public:
+    StringToken(std::string str) : m_string(std::move(str)) {}
+    TokenType type() const override { return TOK_STRING; }
+    std::string to_string() const override { return '"' + m_string + '"'; }
+    std::string string() const { return m_string; }
+
+private:
+    const std::string m_string;
 };
 
 #endif //MILALANGUAGECOMPILER_TOKENS_H

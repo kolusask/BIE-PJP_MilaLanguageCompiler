@@ -4,23 +4,10 @@
 
 #include "../include/Syntax.h"
 
+#include "../include/Operators.h"
+
 #include <set>
 
-
-const std::list<Syntax::Operator> Syntax::s_operators = {{TOK_ASSIGN, ":=", false},
-                                                         {TOK_DIVIDE, "/", false},
-                                                         {TOK_EQUAL, "=", true},
-                                                         {TOK_LESS, "<", true},
-                                                         {TOK_LESS_OR_EQUAL, "<=", true},
-                                                         {TOK_MINUS, "-", false},
-                                                         {TOK_MOD, "mod", false},
-                                                         {TOK_GREATER, ">", true},
-                                                         {TOK_GREATER_OR_EQUAL, ">=", true},
-                                                         {TOK_MULTIPLY, "*", false},
-                                                         {TOK_NOT_EQUAL, "<>", true},
-                                                         {TOK_PLUS, "+", false},
-                                                         {TOK_AND, "and", true},
-                                                         {TOK_OR, "or", true}};
 
 TokenType Syntax::check_character(const char ch) {
     static const std::map<char, TokenType> characters = {{'=', TOK_EQUAL},
@@ -73,7 +60,7 @@ bool Syntax::is_delimiter(const char del) {
 TokenType Syntax::check_operator(const std::string &op) {
     static std::map<std::string, TokenType> opMap;
     if (opMap.empty())
-        for (const Operator& op : s_operators)
+        for (const Operator& op : g_operators)
             opMap[op.name] = op.type;
     auto it = opMap.find(op);
     if (it != opMap.end())
@@ -82,14 +69,14 @@ TokenType Syntax::check_operator(const std::string &op) {
 }
 
 bool Syntax::is_datatype(TokenType dt) {
-    static const std::set<TokenType> dataTypes = {TOK_INTEGER, TOK_DOUBLE};
+    static const std::set<TokenType> dataTypes = {TOK_INTEGER, TOK_DOUBLE, TOK_STRING};
     return dataTypes.count(dt);
 }
 
 bool Syntax::is_bool_operator(TokenType op) {
     static std::set<TokenType> bool_ops;
     if (bool_ops.empty())
-        for (const auto& op : s_operators)
+        for (const auto& op : g_operators)
             if (op.is_boolean)
                 bool_ops.insert(op.type);
     return bool_ops.count(op);

@@ -23,6 +23,7 @@ private:
     std::string parse_program_name();
     ExpressionPointer parse_expression();
     ExpressionPointer parse_single();
+    
     // parse specific constructs
     ExpressionPointer parse_binary(int exprPrec, ExpressionPointer left);
     ExpressionPointer parse_identifier();   // or a function call
@@ -40,6 +41,7 @@ private:
     std::shared_ptr<BinaryOperationExpression> parse_minus();
     std::shared_ptr<BreakExpression> parse_break();
     std::shared_ptr<ExitExpression> parse_exit();
+    std::shared_ptr<StringExpression> parse_string();
 
     inline std::shared_ptr<Token> last_token() const;
     std::shared_ptr<Token> next_token();
